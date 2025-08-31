@@ -3,14 +3,14 @@
 
 # Dataset Configuration
 dataset:
-  name: "BHR_2022_ECOG_MemTrax_Validation"
-  description: "BHR 2022 ECOG-MemTrax correlation analysis for cognitive decline assessment validation"
+  name: "OASIS_CDR_MRI_Prediction"
+  description: "OASIS dataset analysis for predicting Clinical Dementia Rating (CDR) from MRI and demographic features"
   
   # Data sources (can be paths, URLs, or other data sources)
   data_sources:
-    - path: "../bhr.0/BHR-ALL-EXT_Mem_2022/"
+    - path: "./oasis/"
       type: "local_directory"
-      description: "BHR 2022 Memory Extension study data"
+      description: "OASIS brain imaging and clinical data"
     # Example of multiple data sources for future experiments:
     # - path: "../additional_cohort/data/"
     #   type: "local_directory" 
@@ -24,53 +24,44 @@ dataset:
   
   # File patterns to search for
   file_patterns:
-    cognitive_data:
-      - "*MemTrax*.csv"
-      - "*cognitive*.csv"
-      - "*memtrax*.csv"
+    brain_imaging_data:
+      - "oasis_cross-sectional.csv"
+      - "oasis_longitudinal.csv"
+      - "*oasis*.csv"
+      - "*mri*.csv"
     
-    ecog_data:
-      - "*ECOG*.csv"
-      - "*EverydayCognition*.csv"
-      - "*ecog*.csv"
-    
-    demographic_data:
-      - "*Demographics*.csv"
-      - "*demo*.csv"
-      - "*participants*.csv"
-    
-    medical_data:
-      - "*Medical*.csv"
-      - "*medical*.csv"
-      - "*diagnosis*.csv"
+    clinical_data:
+      - "oasis_*.csv"
+      - "*clinical*.csv"
+      - "*cdr*.csv"
 
 # Research Goals and Experiment Configuration
 experiment:
-  name: "BHR_2022_ECOG_MemTrax_Validation_Study"
-  dataset: "BHR_2022_ECOG_MemTrax_Validation"  # Links to dataset.name above
+  name: "OASIS_CDR_MRI_Prediction_Study"
+  dataset: "OASIS_CDR_MRI_Prediction"  # Links to dataset.name above
   
   primary_objectives:
-    - "Compare ECOG self-report vs informant ratings"
-    - "Correlate ECOG scores with MemTrax performance"
-    - "Identify discrepancy patterns between self and informant reports"
-    - "Find novel biomarker candidates based on multi-modal assessment"
-    - "Evaluate MemTrax predictive power for cognitive impairment detection"
+    - "Predict Clinical Dementia Rating (CDR) from MRI brain imaging features"
+    - "Identify most predictive MRI biomarkers for cognitive decline"
+    - "Evaluate demographic factors in CDR prediction models"
+    - "Compare cross-sectional vs longitudinal prediction performance"
+    - "Develop interpretable CDR severity classification model"
   
   secondary_analyses:
-    - "Age-stratified correlation patterns"
-    - "Gender differences in self-awareness"
-    - "Education effects on reporting accuracy"
-    - "Longitudinal changes in self-awareness"
+    - "Age-stratified CDR prediction patterns"
+    - "Gender differences in brain imaging biomarkers"
+    - "Education effects on CDR progression"
+    - "MMSE vs CDR correlation validation"
+    - "Brain volume normalization impact on predictions"
   
   # Specific variables of interest (will be auto-mapped from data dictionary)
   target_variables:
-    ecog_self: ["self_report", "self_ecog", "ecog_self"]
-    ecog_informant: ["informant_report", "informant_ecog", "ecog_informant"]
-    memtrax_rt: ["reaction_time", "response_time", "rt", "CorrectResponsesRT"]
-    memtrax_accuracy: ["accuracy", "percent_correct", "CorrectPCT"]
-    demographics: ["age", "education", "gender"]
-    cognitive_status: ["diagnosis", "cognitive_status", "impairment", "dementia", "MCI", "cognitively_normal"]
-    clinical_outcomes: ["CDR", "MMSE", "MoCA", "clinical_diagnosis", "severity"]
+    cdr_outcome: ["CDR", "cdr", "clinical_dementia_rating"]
+    mri_features: ["eTIV", "nWBV", "ASF", "etiv", "nwbv", "asf"]
+    demographics: ["Age", "M/F", "EDUC", "Educ", "SES", "age", "gender", "education", "ses"]
+    cognitive_measures: ["MMSE", "mmse", "mini_mental"]
+    brain_volumes: ["eTIV", "nWBV", "ASF", "total_intracranial_volume", "normalized_whole_brain_volume", "atlas_scaling_factor"]
+    clinical_status: ["Group", "Nondemented", "Demented", "group", "diagnosis"]
 
 # AI Configuration
 ai_providers:
@@ -138,11 +129,13 @@ literature_research:
   enabled: true
   max_papers_per_query: 20
   search_terms:
-    - "ECOG self informant correlation"
-    - "everyday cognition questionnaire validity"
-    - "self-awareness cognitive decline"
-    - "anosognosia Alzheimer disease"
-    - "digital cognitive assessment validation"
+    - "CDR clinical dementia rating MRI prediction"
+    - "brain imaging biomarkers cognitive decline"
+    - "MRI features dementia classification"
+    - "OASIS dataset CDR prediction models"
+    - "brain volume normalized whole brain CDR"
+    - "eTIV nWBV ASF cognitive impairment"
+    - "structural MRI Alzheimer disease CDR"
   
   databases: ["pubmed", "semantic_scholar"]  # Available: pubmed, semantic_scholar, arxiv
   

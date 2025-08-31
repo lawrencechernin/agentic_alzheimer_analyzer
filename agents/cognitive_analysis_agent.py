@@ -38,6 +38,15 @@ import logging
 import warnings
 warnings.filterwarnings('ignore')
 
+# Import enhancement module if available
+try:
+    import sys
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from cognitive_agent_enhancements import EnhancedCDRPredictor, integrate_enhancements
+    ENHANCEMENTS_AVAILABLE = True
+except ImportError:
+    ENHANCEMENTS_AVAILABLE = False
+
 class CognitiveAnalysisAgent:
     """
     Generalizable analysis agent for cognitive assessment correlation studies
@@ -1397,6 +1406,15 @@ class CognitiveAnalysisAgent:
             if 'Educ' in df.columns:
                 df = df.rename(columns={'Educ': 'EDUC'})
             
+            # Apply advanced enhancements if available
+            if ENHANCEMENTS_AVAILABLE:
+                self.logger.info("   🚀 Applying advanced feature engineering enhancements...")
+                try:
+                    df = integrate_enhancements(self, df)
+                    self.logger.info("   ✅ Successfully applied brain volume normalization and feature enhancements")
+                except Exception as e:
+                    self.logger.warning(f"   ⚠️ Enhancement application failed: {e}, continuing with standard features")
+            
             # Remove rows with missing CDR
             before_cdr_drop = len(df)
             df = df.dropna(subset=['CDR'])
@@ -1475,12 +1493,12 @@ class CognitiveAnalysisAgent:
                 # Filter all datasets
                 X = X.loc[~severe_mask]
                 y = y[~severe_mask]
-                # Re-encode y after filtering (should only have 0.0, 0.5, 1.0 classes now)
-                y_classes = y.copy()
-                y_classes = y_classes.replace(0.0, 0)  # Map 0.0 to class 0
-                y_classes = y_classes.replace(0.5, 1)  # Map 0.5 to class 1
-                y_classes = y_classes.replace(1.0, 2)  # Map 1.0 to class 2
-                y_encoded = y_classes.astype(int)
+                # Re-encode y after filtering - use LabelEncoder for proper sequential mapping
+                # This ensures classes are 0, 1, 2 regardless of original CDR values
+                from sklearn.preprocessing import LabelEncoder
+                le = LabelEncoder()
+                y_encoded = le.fit_transform(y)  # Will map to sequential 0, 1, 2
+                self.logger.info(f"   📊 Classes mapped: {dict(zip(le.classes_, le.transform(le.classes_)))}")
                 
                 self.logger.info(f"   🎯 Final dataset: {len(X)} subjects (target: 603 for benchmark match)")
             else:
@@ -1532,8 +1550,7 @@ class CognitiveAnalysisAgent:
             if XGBOOST_AVAILABLE:
                 models['XGBoost'] = XGBClassifier(
                     random_state=42, 
-                    eval_metric='mlogloss', 
-                    use_label_encoder=False,
+                    eval_metric='mlogloss',
                     learning_rate=0.1,
                     max_depth=8,
                     n_estimators=100
@@ -1544,6 +1561,7 @@ class CognitiveAnalysisAgent:
             best_model_name = None
             best_model = None
             
+            # First test individual models
             for name, model in models.items():
                 try:
                     # BENCHMARK APPROACH: 10-fold CV on full dataset (this is the main evaluation!)
@@ -1576,6 +1594,45 @@ class CognitiveAnalysisAgent:
                         
                 except Exception as e:
                     self.logger.warning(f"   {name} failed: {e}")
+            
+            # Test ensemble model if enhancements are available
+            if ENHANCEMENTS_AVAILABLE and best_score > 0:
+                try:
+                    self.logger.info("   🎯 Testing advanced ensemble model...")
+                    enhancer = EnhancedCDRPredictor(logger=self.logger)
+                    
+                    # Apply correlation-based feature selection
+                    X_selected = enhancer.apply_correlation_based_feature_selection(X, y, threshold=0.05)
+                    X_selected_scaled = scaler.fit_transform(X_selected)
+                    
+                    # Split for ensemble
+                    X_train_ens, X_test_ens, y_train_ens, y_test_ens = train_test_split(
+                        X_selected_scaled, y_encoded, test_size=0.3, random_state=42, stratify=y_encoded
+                    )
+                    
+                    # Create and test ensemble
+                    ensemble_results = enhancer.create_ensemble_model(X_train_ens, y_train_ens, X_test_ens, y_test_ens)
+                    
+                    # Add to results
+                    ensemble_model_results = {
+                        'name': 'Ensemble',
+                        'cv_mean': ensemble_results['ensemble_cv_mean'],
+                        'cv_std': ensemble_results['ensemble_cv_std'],
+                        'test_accuracy': ensemble_results.get('ensemble_test_accuracy', 0),
+                        'cv_scores': []  # Not available for ensemble
+                    }
+                    
+                    prediction_results['models_tested'].append(ensemble_model_results)
+                    
+                    # Check if ensemble is best
+                    if ensemble_results['ensemble_cv_mean'] > best_score:
+                        best_score = ensemble_results['ensemble_cv_mean']
+                        best_model_name = 'Ensemble'
+                        best_model = ensemble_results['model']
+                        self.logger.info(f"   ✅ Ensemble is new best model: CV={ensemble_results['ensemble_cv_mean']:.3f}")
+                    
+                except Exception as e:
+                    self.logger.warning(f"   Ensemble model failed: {e}")
             
             if best_model is not None:
                 # Enhanced evaluation of best model

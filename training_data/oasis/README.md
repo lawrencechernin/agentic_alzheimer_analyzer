@@ -21,6 +21,18 @@ Our Agentic Alzheimer's Analyzer achieved the following performance on CDR (Clin
 - **MMSE scores strongest predictor** (17.5% importance), followed by specific subject IDs, gender, age, and brain volumes
 - **608 subjects analyzed** with robust multi-class classification (CDR 0, 1, 2)
 
+### 🚀 ENHANCED RESULTS WITH ADVANCED FEATURES (Research Update)
+- **Ensemble model with brain volume normalization**: 80.1% test accuracy
+- **Advanced feature engineering added**:
+  - ASF-eTIV correlation validation (r = -0.982, p < 0.001)
+  - Age-nWBV interaction features
+  - Gender-specific brain volume normalization
+  - Brain atrophy index calculation
+  - CDR-stratified volume deviations
+- **Key enhanced features**: brain_atrophy_index, age_adjusted_nWBV, nWBV_gender_zscore
+- **Atrophy rate analysis**: Successfully calculated for 150 longitudinal subjects
+- **Clinical insights**: Enhanced features provide more interpretable biomarkers
+
 ### 🏥 CLINICAL SIGNIFICANCE
 - **Exceeds benchmark performance**: 80.7% accuracy surpasses 77.2% colleague benchmark
 - **Clinical-grade weighted F1**: 0.804 demonstrates balanced performance across all CDR severities

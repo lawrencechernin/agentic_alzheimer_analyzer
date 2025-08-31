@@ -280,11 +280,11 @@ python run_analysis.py
 ```
 
 The system will:
-1. 🔍 Discover your dataset automatically
-2. 🧠 Execute comprehensive analysis
-3. 📚 Research relevant literature
-4. 💡 Generate insights and recommendations
-5. 📄 Create grant-ready reports
+1. 🔍 Discover your dataset automatically (full dataset analysis by default)
+2. 🧠 Execute comprehensive analysis with Cartesian join protection
+3. 📚 Research relevant literature (158+ papers typically)
+4. 💡 Generate insights and recommendations using domain-expert AI
+5. 📄 Create research-quality reports with human-readable summaries
 
 ## 📁 Output Structure
 
@@ -533,10 +533,19 @@ The framework is designed to be easily extended:
 - **Solution**: Check subject ID column names and formats across your datasets
 - **Common fix**: Standardize subject ID formats before analysis
 
+**"Misleading subject counts" / Discovery vs Analysis mismatch**
+```
+📊 DATASET OVERVIEW: Files analyzed: 6, Total subjects: 1,000
+🧠 ANALYSIS PHASE: Subjects analyzed: 38,948
+```
+- **Cause**: Discovery was using sampling (1,000 rows) while analysis used full datasets
+- **Fix**: Framework now uses `full_analysis: true` by default for accurate discovery
+- **Override**: Set `discovery.full_analysis: false` if you need faster discovery on very large datasets
+
 **Out of memory / System killed**
-- **Modern protection**: Updated system prevents memory explosions
-- **Legacy issues**: Update to latest version with Cartesian join protection
-- **Large datasets**: Enable sampling in `config.yaml`: `use_sampling: true`
+- **Modern protection**: Updated system prevents memory explosions with Cartesian join detection
+- **Legacy issues**: Update to latest version with automatic deduplication
+- **Very large datasets**: Disable full discovery: `discovery.full_analysis: false`
 
 ### Support
 

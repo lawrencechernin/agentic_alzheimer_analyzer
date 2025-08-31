@@ -440,22 +440,22 @@ class AgenticAlzheimerAnalyzer:
     def _generate_final_reports(self) -> Dict[str, Any]:
         """Generate final analysis reports"""
         report_results = {
-            'grant_application_section': '',
+            'proposed_research': '',
             'manuscript_draft': '',
             'executive_summary': '',
             'technical_report': ''
         }
         
         try:
-            # Generate grant application section
-            if self.config.get('outputs', {}).get('reports', {}).get('generate_grant_section', True):
-                grant_section = self._generate_grant_section()
-                report_results['grant_application_section'] = grant_section
+            # Generate proposed research section
+            if self.config.get('outputs', {}).get('reports', {}).get('generate_research_proposal', True):
+                research_proposal = self._generate_research_proposal()
+                report_results['proposed_research'] = research_proposal
                 
                 # Save to file
-                with open('outputs/grant_application_section.md', 'w') as f:
-                    f.write(grant_section)
-                self.logger.info("📄 Grant application section saved")
+                with open('outputs/proposed_research.md', 'w') as f:
+                    f.write(research_proposal)
+                self.logger.info("📄 Proposed research section saved")
             
             # Generate executive summary
             executive_summary = self._generate_executive_summary()
@@ -471,8 +471,8 @@ class AgenticAlzheimerAnalyzer:
         
         return report_results
     
-    def _generate_grant_section(self) -> str:
-        """Generate grant application preliminary data section"""
+    def _generate_research_proposal(self) -> str:
+        """Generate proposed research based on analysis findings"""
         # Extract key statistics
         analysis = self.results.get('analysis', {})
         literature = self.results.get('literature', {})
@@ -485,14 +485,14 @@ class AgenticAlzheimerAnalyzer:
         experiment_name = self.config.get('experiment', {}).get('name', 'Cognitive Assessment Validation Study')
         dataset_name = self.config.get('dataset', {}).get('name', 'Multi-Modal Cognitive Assessment Dataset')
         
-        grant_section = f"""
-# Preliminary Data: {experiment_name}
+        research_proposal = f"""
+# Proposed Research: {experiment_name}
 
-## Background and Significance
+## Research Background and Significance
 
-This autonomous analysis of {sample_size:,} subjects from the {dataset_name} demonstrates the feasibility and clinical utility of multi-modal cognitive assessment approaches for early detection of cognitive decline.
+This autonomous analysis of {sample_size:,} subjects from the {dataset_name} provides compelling evidence for the feasibility and clinical utility of multi-modal cognitive assessment approaches for early detection of cognitive decline. These preliminary findings form the foundation for proposed future research.
 
-## Key Findings
+## Current Findings
 
 ### Dataset Characteristics
 - **Sample Size**: {sample_size:,} subjects with complete baseline data
@@ -508,21 +508,21 @@ This autonomous analysis of {sample_size:,} subjects from the {dataset_name} dem
         self_informant = analysis.get('self_informant_comparison', {})
         if self_informant.get('self_informant_available'):
             correlation = self_informant.get('correlation_analysis', {}).get('correlation_coefficient', 0)
-            grant_section += f"""
+            research_proposal += f"""
 - **Self-Informant Agreement**: Moderate correlation (r = {correlation:.3f}) between self and informant reports, suggesting complementary information
 """
         
         # Add novelty findings
         novel_findings = literature.get('novelty_analysis', {}).get('novel_findings', [])
         if novel_findings:
-            grant_section += f"""
+            research_proposal += f"""
 
 ### Novel Contributions
 - **{len(novel_findings)} Novel Findings**: Analysis revealed findings that differ significantly from existing literature
 - **Innovation**: First large-scale validation of ECOG-MemTrax relationship in this population
 """
         
-        grant_section += """
+        research_proposal += """
 
 ## Clinical Implications
 
@@ -530,26 +530,38 @@ This autonomous analysis of {sample_size:,} subjects from the {dataset_name} dem
 2. **Validation Tool**: Objective cognitive assessments can validate subjective cognitive reports
 3. **Scalable Assessment**: Standardized digital measures provide objective measurement complementing clinical evaluation
 
-## Research Impact
+## Proposed Research Program
 
-These preliminary data support the development of a comprehensive early detection protocol combining:
-- Multiple cognitive assessment modalities
-- Self and informant perspectives
-- Objective performance measures
-- AI-powered analysis and interpretation
+Building on these preliminary findings, we propose a comprehensive research program to advance multi-modal cognitive assessment:
 
-## Next Steps
+### Phase 1: Validation and Replication
+- Replicate findings in independent cohorts
+- Validate across diverse populations and settings
+- Confirm the predictive validity of multi-modal cognitive assessment
 
-Based on these findings, we propose a longitudinal validation study to:
-1. Confirm the predictive validity of multi-modal cognitive assessment
-2. Develop clinical decision algorithms
-3. Implement in diverse healthcare settings
-4. Validate AI-powered interpretation tools
+### Phase 2: Longitudinal Investigation
+We propose a longitudinal validation study to:
+1. Track cognitive trajectories using multi-modal assessment
+2. Establish predictive models for cognitive decline
+3. Develop personalized risk assessment algorithms
+
+### Phase 3: Implementation and Translation
+- Develop clinical decision support tools
+- Create standardized protocols for diverse healthcare settings  
+- Build AI-powered interpretation frameworks
+- Establish population-specific reference standards
+
+## Research Innovation
+
+This proposed research represents a paradigm shift toward:
+- **Autonomous analysis**: Reducing time from months to hours
+- **Standardized approaches**: Consistent methodology across studies
+- **Open science**: Reproducible frameworks for the research community
 
 *Analysis completed using autonomous AI agents for objective, reproducible research.*
 """
         
-        return grant_section
+        return research_proposal
     
     def _generate_executive_summary(self) -> str:
         """Generate executive summary"""
@@ -723,7 +735,7 @@ Autonomous AI agents analyzed {sample_size:,} subjects to explore relationships 
         print(f"   🎯 Dataset discovery: outputs/dataset_discovery_results.json")
         print(f"   🧠 Cognitive analysis: outputs/cognitive_analysis_results.json")
         print(f"   📚 Literature research: outputs/literature_research_results.json")
-        print(f"   📋 Grant application section: outputs/grant_application_section.md")
+        print(f"   📋 Proposed research: outputs/proposed_research.md")
         print(f"   📄 Executive summary: outputs/executive_summary.md")
         print(f"   📈 Visualizations: outputs/visualizations/")
         
@@ -742,7 +754,7 @@ Autonomous AI agents analyzed {sample_size:,} subjects to explore relationships 
                 print(f"   {i}. {implication}")
         
         print("\n" + "="*100)
-        print("✅ AUTONOMOUS ANALYSIS COMPLETE - READY FOR GRANT APPLICATIONS!")
+        print("✅ AUTONOMOUS ANALYSIS COMPLETE - READY FOR RESEARCH PROPOSALS!")
         print("🚀 Framework ready for deployment on other Alzheimer's datasets")
         print("🌟 Contributing to acceleration of ADRD research through agentic AI")
         print("="*100)

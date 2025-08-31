@@ -45,7 +45,7 @@ def main():
         if results['orchestrator']['status'] == 'completed':
             print("\n🎉 SUCCESS! Analysis completed successfully.")
             print("📁 Check the 'outputs/' directory for results.")
-            print("🎯 Grant application materials are ready!")
+            print("🎯 Research proposal materials are ready!")
             return 0
         else:
             print(f"\n❌ Analysis failed: {results['orchestrator'].get('error', 'Unknown error')}")

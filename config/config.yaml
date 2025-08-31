@@ -144,7 +144,7 @@ outputs:
   
   # Report generation settings
   reports:
-    generate_grant_section: true
+    generate_research_proposal: true
     generate_manuscript_draft: true
     generate_presentation: true
     include_raw_data_summary: false  # For privacy

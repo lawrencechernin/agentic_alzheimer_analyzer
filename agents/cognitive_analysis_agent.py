@@ -1636,20 +1636,42 @@ class CognitiveAnalysisAgent:
             
             if best_model is not None:
                 # Enhanced evaluation of best model
-                y_pred = best_model.predict(X_test)
+                # Use correct feature dimensions based on model type
+                if best_model_name == 'Ensemble':
+                    # Ensemble was trained on selected features
+                    y_pred = best_model.predict(X_test_ens)
+                    test_accuracy = accuracy_score(y_test_ens, y_pred)
+                else:
+                    # Individual models were trained on full feature set
+                    y_pred = best_model.predict(X_test)
+                    test_accuracy = accuracy_score(y_test, y_pred)
+                
+                # Get correct y_true for classification report
+                y_true = y_test_ens if best_model_name == 'Ensemble' else y_test
                 
                 prediction_results['best_model'] = {
                     'name': best_model_name,
                     'cv_accuracy': best_score,
-                    'test_accuracy': accuracy_score(y_test, y_pred),
-                    'classification_report': classification_report(y_test, y_pred, output_dict=True)
+                    'test_accuracy': test_accuracy,
+                    'classification_report': classification_report(y_true, y_pred, output_dict=True)
                 }
                 
                 # Feature importance (if available)
+                importance_scores = None
+                feature_names = None
+                
                 if hasattr(best_model, 'feature_importances_'):
                     importance_scores = best_model.feature_importances_
-                    feature_names = list(X.columns)
-                    
+                    feature_names = list(X_selected.columns if best_model_name == 'Ensemble' else X.columns)
+                elif hasattr(best_model, 'estimators_') and best_model_name == 'Ensemble':
+                    # For ensemble models, get feature importance from first estimator
+                    try:
+                        importance_scores = best_model.estimators_[0][1].feature_importances_
+                        feature_names = list(X_selected.columns)
+                    except:
+                        pass
+                
+                if importance_scores is not None and feature_names is not None:
                     # Get top 10 most important features
                     importance_df = pd.DataFrame({
                         'feature': feature_names,
@@ -1662,9 +1684,11 @@ class CognitiveAnalysisAgent:
                     for _, row in importance_df.head(5).iterrows():
                         self.logger.info(f"      {row['feature']}: {row['importance']:.3f}")
                 
-                # Clinical insights
+                # Clinical insights with F1-score information
                 insights = []
                 test_acc = prediction_results['best_model']['test_accuracy']
+                classification_report = prediction_results['best_model']['classification_report']
+                weighted_f1 = classification_report.get('weighted avg', {}).get('f1-score', 0)
                 
                 if test_acc > 0.8:
                     insights.append("Excellent CDR prediction accuracy achieved (>80%)")
@@ -1678,7 +1702,23 @@ class CognitiveAnalysisAgent:
                 
                 prediction_results['clinical_insights'] = insights
                 
-                self.logger.info(f"   ✅ Best model: {best_model_name} (accuracy: {test_acc:.3f})")
+                # Enhanced logging with F1-score details
+                self.logger.info(f"   ✅ Best model: {best_model_name}")
+                self.logger.info(f"      📊 Test Accuracy: {test_acc:.1%}")
+                self.logger.info(f"      📊 Weighted F1-Score: {weighted_f1:.3f}")
+                self.logger.info(f"      📊 CV Accuracy: {best_score:.1%}")
+                
+                # Log per-class performance
+                if '0' in classification_report and '1' in classification_report:
+                    self.logger.info(f"   📋 Per-class performance:")
+                    for class_name, metrics in classification_report.items():
+                        if class_name.isdigit():
+                            cdr_value = {0: '0.0', 1: '0.5', 2: '1.0'}.get(int(class_name), class_name)
+                            f1 = metrics.get('f1-score', 0)
+                            precision = metrics.get('precision', 0)
+                            recall = metrics.get('recall', 0)
+                            support = metrics.get('support', 0)
+                            self.logger.info(f"      CDR {cdr_value}: F1={f1:.3f}, Precision={precision:.3f}, Recall={recall:.3f} (n={int(support)})")
                 
             else:
                 prediction_results['error'] = 'No models successfully trained'

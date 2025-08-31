@@ -161,6 +161,11 @@ class CognitiveAnalysisAgent:
             self.logger.info("Step 5: Cognitive performance analysis")
             analysis_results['cognitive_performance_analysis'] = self._analyze_cognitive_performance()
             
+            # Step 5b: MemTrax predictive modeling for cognitive impairment
+            if self._has_memtrax_and_outcomes_data():
+                self.logger.info("Step 5b: MemTrax cognitive impairment prediction analysis")
+                analysis_results['memtrax_prediction'] = self._analyze_memtrax_predictive_power()
+            
             # Step 6: Generate clinical insights
             self.logger.info("Step 6: Clinical insights generation")
             analysis_results['clinical_insights'] = self._generate_clinical_insights(analysis_results)
@@ -228,6 +233,10 @@ class CognitiveAnalysisAgent:
             self.combined_data = self._clean_and_validate_data(self.combined_data)
             data_summary['preprocessing_steps'].append("Applied data quality filters")
             
+            # Add cognitive impairment labels (based on medical QID codes)
+            if self._add_cognitive_impairment_labels():
+                data_summary['preprocessing_steps'].append("Added cognitive impairment labels from medical history")
+            
             data_summary['total_subjects'] = len(self.combined_data)
             data_summary['baseline_subjects'] = len(self.combined_data)
             
@@ -247,14 +256,36 @@ class CognitiveAnalysisAgent:
         
         for file_path in file_paths:
             try:
-                if use_sampling:
-                    # Sample data to prevent memory explosion
-                    df = pd.read_csv(file_path, nrows=sample_size, low_memory=False)
-                    total_rows = sum(1 for _ in open(file_path)) - 1  # Get total count
-                    self.logger.info(f"     {assessment_type} file: {os.path.basename(file_path)} - {len(df)} of {total_rows:,} records (sampled)")
+                # Load data with proper filtering
+                df = pd.read_csv(file_path, low_memory=False)
+                total_loaded = len(df)
+                
+                # Apply MemTrax-specific filtering (based on human scripts)
+                if 'MemTrax' in os.path.basename(file_path) or assessment_type == 'cognitive_data':
+                    # Filter to collected status only (as done in human scripts)
+                    if 'Status' in df.columns:
+                        df = df[df['Status'] == 'Collected'].copy()
+                        self.logger.info(f"     MemTrax filtered: {len(df):,} collected of {total_loaded:,} total records")
+                    
+                    # Convert key numeric columns
+                    numeric_cols = ['CorrectPCT', 'CorrectResponsesRT', 'CorrectResponsesPCT', 'CorrectRejectionsPCT']
+                    for col in numeric_cols:
+                        if col in df.columns:
+                            df[col] = pd.to_numeric(df[col], errors='coerce')
+                    
+                    # Convert test dates
+                    if 'StatusDateTime' in df.columns:
+                        df['test_date'] = pd.to_datetime(df['StatusDateTime'], errors='coerce')
+                        df = df.dropna(subset=['test_date'])
+                        self.logger.info(f"     MemTrax with valid dates: {len(df):,} records")
+                
+                # Apply sampling after filtering if needed
+                if use_sampling and len(df) > sample_size:
+                    df = df.sample(n=sample_size, random_state=42)
+                    self.logger.info(f"     {assessment_type} file: {os.path.basename(file_path)} - {len(df):,} of {total_loaded:,} records (sampled after filtering)")
                 else:
-                    df = pd.read_csv(file_path, low_memory=False)
-                    self.logger.info(f"     {assessment_type} file: {os.path.basename(file_path)} - {len(df)} records")
+                    self.logger.info(f"     {assessment_type} file: {os.path.basename(file_path)} - {len(df):,} records")
+                
                 dataframes.append(df)
             except Exception as e:
                 self.logger.warning(f"Could not load {file_path}: {e}")
@@ -933,6 +964,224 @@ class CognitiveAnalysisAgent:
         print("📁 Results saved to: outputs/cognitive_analysis_results.json")
         print("🎨 Visualizations saved to: outputs/visualizations/")
         print("="*80)
+    
+    def _has_memtrax_and_outcomes_data(self) -> bool:
+        """Check if we have MemTrax data and cognitive outcome variables for prediction"""
+        if self.combined_data is None or self.combined_data.empty:
+            return False
+            
+        # Check for MemTrax variables
+        memtrax_vars = [col for col in self.combined_data.columns if any(pattern.lower() in col.lower() for pattern in ['memtrax', 'reaction_time', 'response_time', 'correctresponsesrt', 'correctpct', 'accuracy'])]
+        
+        # Check for cognitive outcome variables  
+        outcome_vars = [col for col in self.combined_data.columns if any(pattern.lower() in col.lower() for pattern in ['diagnosis', 'cognitive_status', 'impairment', 'dementia', 'mci', 'cdr', 'mmse', 'moca'])]
+        
+        has_memtrax = len(memtrax_vars) > 0
+        has_outcomes = len(outcome_vars) > 0
+        
+        self.logger.info(f"   MemTrax variables found: {len(memtrax_vars)}")  
+        self.logger.info(f"   Outcome variables found: {len(outcome_vars)}")
+        
+        return has_memtrax and has_outcomes
+    
+    def _analyze_memtrax_predictive_power(self) -> Dict[str, Any]:
+        """Analyze MemTrax predictive power for cognitive impairment detection"""
+        prediction_results = {
+            'analysis_type': 'memtrax_cognitive_impairment_prediction',
+            'memtrax_variables': [],
+            'outcome_variables': [],
+            'model_performance': {},
+            'predictive_insights': []
+        }
+        
+        try:
+            # Find MemTrax and outcome variables
+            memtrax_vars = [col for col in self.combined_data.columns if any(pattern.lower() in col.lower() for pattern in ['memtrax', 'correctresponsesrt', 'correctpct', 'reaction_time', 'accuracy'])]
+            outcome_vars = [col for col in self.combined_data.columns if any(pattern.lower() in col.lower() for pattern in ['diagnosis', 'cognitive_status', 'cdr', 'mmse', 'moca', 'impairment'])]
+            
+            if not memtrax_vars or not outcome_vars:
+                prediction_results['error'] = 'Insufficient variables for predictive modeling'
+                return prediction_results
+            
+            prediction_results['memtrax_variables'] = memtrax_vars
+            prediction_results['outcome_variables'] = outcome_vars
+            
+            # Analyze each outcome variable
+            for outcome_var in outcome_vars[:2]:  # Limit to prevent excessive analysis
+                self.logger.info(f"   Analyzing MemTrax prediction for: {outcome_var}")
+                
+                # Get clean data for this analysis
+                analysis_data = self.combined_data[memtrax_vars + [outcome_var]].dropna()
+                
+                if len(analysis_data) < 50:  # Need minimum sample
+                    continue
+                
+                # Correlation-based predictive analysis
+                outcome_analysis = self._analyze_memtrax_outcome_relationship(analysis_data, memtrax_vars, outcome_var)
+                prediction_results['model_performance'][outcome_var] = outcome_analysis
+            
+            # Generate predictive insights
+            prediction_results['predictive_insights'] = self._generate_memtrax_predictive_insights(prediction_results)
+            
+        except Exception as e:
+            prediction_results['error'] = f"MemTrax prediction analysis failed: {str(e)}"
+            self.logger.error(f"MemTrax prediction analysis error: {e}")
+        
+        return prediction_results
+    
+    def _analyze_memtrax_outcome_relationship(self, data: pd.DataFrame, memtrax_vars: List[str], outcome_var: str) -> Dict[str, Any]:
+        """Analyze relationship between MemTrax variables and cognitive outcome"""
+        relationship_analysis = {
+            'outcome_variable': outcome_var,
+            'sample_size': len(data),
+            'memtrax_correlations': {},
+            'clinical_significance': 'unknown'
+        }
+        
+        try:
+            # Calculate correlations between MemTrax variables and outcome
+            for memtrax_var in memtrax_vars:
+                if memtrax_var in data.columns and outcome_var in data.columns:
+                    correlation = data[memtrax_var].corr(pd.to_numeric(data[outcome_var], errors='coerce'))
+                    
+                    if not np.isnan(correlation):
+                        relationship_analysis['memtrax_correlations'][memtrax_var] = {
+                            'correlation': float(correlation),
+                            'abs_correlation': float(abs(correlation))
+                        }
+            
+            # Determine strongest predictor
+            if relationship_analysis['memtrax_correlations']:
+                strongest_predictor = max(
+                    relationship_analysis['memtrax_correlations'].items(),
+                    key=lambda x: x[1]['abs_correlation']
+                )
+                relationship_analysis['strongest_predictor'] = {
+                    'variable': strongest_predictor[0],
+                    'correlation': strongest_predictor[1]['correlation']
+                }
+                
+                # Assess clinical significance
+                max_correlation = abs(strongest_predictor[1]['correlation'])
+                if max_correlation >= 0.5:
+                    relationship_analysis['clinical_significance'] = 'strong'
+                elif max_correlation >= 0.3:
+                    relationship_analysis['clinical_significance'] = 'moderate'
+                elif max_correlation >= 0.1:
+                    relationship_analysis['clinical_significance'] = 'weak'
+                else:
+                    relationship_analysis['clinical_significance'] = 'minimal'
+        
+        except Exception as e:
+            relationship_analysis['error'] = str(e)
+        
+        return relationship_analysis
+    
+    def _generate_memtrax_predictive_insights(self, prediction_results: Dict[str, Any]) -> List[str]:
+        """Generate insights about MemTrax predictive capabilities"""
+        insights = []
+        
+        try:
+            model_performance = prediction_results.get('model_performance', {})
+            
+            if not model_performance:
+                insights.append("Insufficient data for MemTrax predictive modeling")
+                return insights
+            
+            # Analyze overall predictive performance
+            strong_predictors = []
+            moderate_predictors = []
+            
+            for outcome, analysis in model_performance.items():
+                significance = analysis.get('clinical_significance', 'unknown')
+                strongest = analysis.get('strongest_predictor', {})
+                
+                if significance == 'strong':
+                    strong_predictors.append(f"{strongest.get('variable', 'unknown')} for {outcome}")
+                elif significance == 'moderate':
+                    moderate_predictors.append(f"{strongest.get('variable', 'unknown')} for {outcome}")
+            
+            if strong_predictors:
+                insights.append(f"MemTrax shows strong predictive power: {', '.join(strong_predictors)}")
+            
+            if moderate_predictors:
+                insights.append(f"MemTrax shows moderate predictive power: {', '.join(moderate_predictors)}")
+            
+            if not strong_predictors and not moderate_predictors:
+                insights.append("MemTrax shows limited predictive power for cognitive impairment in this dataset")
+            
+            # Add sample size context
+            total_analyses = len(model_performance)
+            if total_analyses > 0:
+                avg_sample = sum(analysis.get('sample_size', 0) for analysis in model_performance.values()) / total_analyses
+                insights.append(f"Predictive analysis based on average {avg_sample:.0f} subjects per outcome")
+        
+        except Exception as e:
+            insights.append(f"Error generating MemTrax predictive insights: {str(e)}")
+        
+        return insights
+    
+    def _add_cognitive_impairment_labels(self) -> bool:
+        """Add cognitive impairment labels based on medical history QID codes"""
+        try:
+            # Look for medical data in our combined dataset
+            medical_cols = [col for col in self.combined_data.columns if col.startswith('QID1-')]
+            
+            if not medical_cols:
+                self.logger.warning("No medical QID columns found for cognitive impairment labeling")
+                return False
+            
+            # Cognitive condition QID codes (based on human scripts)
+            cognitive_qids = [
+                'QID1-5',   # Dementia
+                'QID1-12',  # Alzheimer's Disease
+                'QID1-13',  # Mild Cognitive Impairment (MCI)
+                'QID1-22',  # Frontotemporal Dementia (FTD)
+                'QID1-23',  # Lewy Body Disease (LBD)
+            ]
+            
+            self.logger.info(f"   Found {len(medical_cols)} medical QID columns, checking for cognitive conditions...")
+            
+            # Create cognitive impairment labels
+            cognitive_impairment = []
+            cognitive_details = []
+            
+            for idx, row in self.combined_data.iterrows():
+                has_cognitive_condition = False
+                conditions_found = []
+                
+                for qid in cognitive_qids:
+                    if qid in self.combined_data.columns:
+                        try:
+                            value = pd.to_numeric(row[qid], errors='coerce')
+                            if value == 1:
+                                has_cognitive_condition = True
+                                conditions_found.append(qid)
+                        except:
+                            if str(row[qid]).strip() == '1':
+                                has_cognitive_condition = True
+                                conditions_found.append(qid)
+                
+                cognitive_impairment.append(1 if has_cognitive_condition else 0)
+                cognitive_details.append(','.join(conditions_found) if conditions_found else 'None')
+            
+            # Add to dataset
+            self.combined_data['CognitiveImpairment'] = cognitive_impairment
+            self.combined_data['CognitiveDiagnosisCodes'] = cognitive_details
+            
+            # Log summary
+            impaired_count = sum(cognitive_impairment)
+            total_count = len(cognitive_impairment)
+            
+            self.logger.info(f"   Cognitive impairment labeling complete:")
+            self.logger.info(f"   - Cognitively impaired: {impaired_count:,} ({impaired_count/total_count*100:.1f}%)")
+            self.logger.info(f"   - Cognitively normal: {total_count-impaired_count:,} ({(total_count-impaired_count)/total_count*100:.1f}%)")
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Failed to add cognitive impairment labels: {e}")
+            return False
 
 
 def main():

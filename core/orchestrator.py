@@ -41,8 +41,10 @@ except ImportError:
 try:
     import google.generativeai as genai
     GEMINI_AVAILABLE = True
-except ImportError:
+except (ImportError, AttributeError) as e:
     GEMINI_AVAILABLE = False
+    print(f"⚠️ Gemini library not available: {e}")
+    genai = None
 
 
 class AgenticAlzheimerAnalyzer:
@@ -66,6 +68,9 @@ class AgenticAlzheimerAnalyzer:
         
         # Initialize AI clients
         self.ai_clients = self._initialize_ai_clients()
+        
+        # Validate that at least one AI client is available
+        self._validate_ai_clients()
         
         # Initialize agents
         self.discovery_agent = DataDiscoveryAgent(config_path)
@@ -127,49 +132,164 @@ class AgenticAlzheimerAnalyzer:
         ai_config = self.config.get('ai_providers', {})
         
         # Initialize Claude client
-        if ai_config.get('claude', {}).get('enabled', False) and ANTHROPIC_AVAILABLE:
-            try:
-                api_key_env = ai_config['claude'].get('api_key_env', 'ANTHROPIC_API_KEY')
-                api_key = os.getenv(api_key_env)
-                if api_key:
-                    clients['claude'] = anthropic.Anthropic(api_key=api_key)
-                    self.logger.info("✅ Claude client initialized")
-                else:
-                    self.logger.warning(f"Claude API key not found in environment variable: {api_key_env}")
-            except Exception as e:
-                self.logger.warning(f"Failed to initialize Claude client: {e}")
+        if ai_config.get('claude', {}).get('enabled', False):
+            if not ANTHROPIC_AVAILABLE:
+                self.logger.error("❌ anthropic library not installed. Run: pip install anthropic")
+            else:
+                try:
+                    api_key_env = ai_config['claude'].get('api_key_env', 'ANTHROPIC_API_KEY')
+                    api_key = os.getenv(api_key_env)
+                    if api_key:
+                        clients['claude'] = anthropic.Anthropic(api_key=api_key)
+                        self.logger.info("✅ Claude client initialized")
+                    else:
+                        self.logger.warning(f"❌ Claude API key not found in environment variable: {api_key_env}")
+                except Exception as e:
+                    self.logger.error(f"❌ Failed to initialize Claude client: {e}")
         
-        # Initialize OpenAI client
-        if ai_config.get('openai', {}).get('enabled', False) and OPENAI_AVAILABLE:
-            try:
-                api_key_env = ai_config['openai'].get('api_key_env', 'OPENAI_API_KEY')
-                api_key = os.getenv(api_key_env)
-                if api_key:
-                    clients['openai'] = openai.OpenAI(api_key=api_key)
-                    self.logger.info("✅ OpenAI client initialized")
-                else:
-                    self.logger.warning(f"OpenAI API key not found in environment variable: {api_key_env}")
-            except Exception as e:
-                self.logger.warning(f"Failed to initialize OpenAI client: {e}")
+        # Initialize OpenAI client  
+        if ai_config.get('openai', {}).get('enabled', False):
+            if not OPENAI_AVAILABLE:
+                self.logger.error("❌ openai library not installed. Run: pip install openai")
+            else:
+                try:
+                    api_key_env = ai_config['openai'].get('api_key_env', 'OPENAI_API_KEY')
+                    api_key = os.getenv(api_key_env)
+                    if api_key:
+                        clients['openai'] = openai.OpenAI(api_key=api_key)
+                        self.logger.info("✅ OpenAI client initialized")
+                    else:
+                        self.logger.warning(f"❌ OpenAI API key not found in environment variable: {api_key_env}")
+                except Exception as e:
+                    self.logger.error(f"❌ Failed to initialize OpenAI client: {e}")
         
         # Initialize Gemini client
-        if ai_config.get('gemini', {}).get('enabled', False) and GEMINI_AVAILABLE:
-            try:
-                api_key_env = ai_config['gemini'].get('api_key_env', 'GEMINI_API_KEY')
-                api_key = os.getenv(api_key_env)
-                if api_key:
-                    genai.configure(api_key=api_key)
-                    clients['gemini'] = genai.GenerativeModel('gemini-pro')
-                    self.logger.info("✅ Gemini client initialized")
-                else:
-                    self.logger.warning(f"Gemini API key not found in environment variable: {api_key_env}")
-            except Exception as e:
-                self.logger.warning(f"Failed to initialize Gemini client: {e}")
+        if ai_config.get('gemini', {}).get('enabled', False):
+            if not GEMINI_AVAILABLE or genai is None:
+                self.logger.warning("❌ Gemini not available due to library conflicts. Using Claude/OpenAI only.")
+            else:
+                try:
+                    api_key_env = ai_config['gemini'].get('api_key_env', 'GEMINI_API_KEY')
+                    api_key = os.getenv(api_key_env)
+                    if api_key:
+                        genai.configure(api_key=api_key)
+                        clients['gemini'] = genai.GenerativeModel('gemini-pro')
+                        self.logger.info("✅ Gemini client initialized")
+                    else:
+                        self.logger.warning(f"❌ Gemini API key not found in environment variable: {api_key_env}")
+                except Exception as e:
+                    self.logger.error(f"❌ Failed to initialize Gemini client: {e}")
+                    self.logger.warning("Continuing without Gemini - Claude/OpenAI available")
         
         if not clients:
-            self.logger.warning("⚠️ No AI clients initialized - will use fallback methods")
+            self.logger.error("⚠️ No AI clients initialized - missing libraries and/or API keys")
         
         return clients
+    
+    def _validate_ai_clients(self):
+        """Validate that at least one AI client is properly configured"""
+        if not self.ai_clients:
+            error_msg = """
+🚨 ERROR: No AI clients available!
+
+The Agentic Alzheimer's Analyzer requires at least one AI provider to function.
+
+STEP 1: Install required AI libraries:
+  pip install anthropic openai google-generativeai
+
+STEP 2: Configure an API key for one of the following providers:
+
+For Claude (Anthropic) - RECOMMENDED:
+  export ANTHROPIC_API_KEY="your_anthropic_api_key_here"
+
+For OpenAI:  
+  export OPENAI_API_KEY="your_openai_api_key_here"
+
+For Gemini:
+  export GEMINI_API_KEY="your_gemini_api_key_here"
+
+STEP 3: Restart the analysis.
+
+💡 Get API keys at:
+- Claude: https://console.anthropic.com/
+- OpenAI: https://platform.openai.com/api-keys  
+- Gemini: https://makersuite.google.com/app/apikey
+
+📦 Or install all dependencies at once:
+  pip install -r requirements.txt
+"""
+            self.logger.error("No AI clients available - exiting")
+            print(error_msg)
+            sys.exit(1)
+        
+        # Log available clients
+        available_clients = list(self.ai_clients.keys())
+        self.logger.info(f"✅ AI clients available: {', '.join(available_clients)}")
+        print(f"🤖 AI providers initialized: {', '.join(available_clients)}")
+        
+        # Warn if using non-preferred provider
+        if 'claude' not in self.ai_clients and len(self.ai_clients) > 0:
+            self.logger.warning("Claude (Anthropic) not available - using alternative provider. Claude is recommended for best results.")
+            print("⚠️  Claude not available - using alternative AI provider. Claude is recommended for optimal performance.")
+    
+    def _is_credit_error(self, error_message: str) -> bool:
+        """Check if error is related to credits/quota issues"""
+        credit_indicators = [
+            "credit balance is too low",
+            "insufficient credits",
+            "quota exceeded",
+            "billing",
+            "payment required",
+            "rate limit exceeded",
+            "usage limit",
+            "account suspended"
+        ]
+        error_lower = error_message.lower()
+        return any(indicator in error_lower for indicator in credit_indicators)
+    
+    def _handle_credit_error(self, error: Exception):
+        """Handle credit/quota errors with clear user guidance"""
+        error_message = """
+🚨 CRITICAL ERROR: Insufficient API Credits
+
+The analysis cannot continue due to API credit/quota limitations.
+
+IMMEDIATE ACTION REQUIRED:
+
+For Anthropic (Claude):
+  1. Visit: https://console.anthropic.com/settings/billing
+  2. Add payment method or purchase credits
+  3. Current error: Credit balance too low
+
+For OpenAI:
+  1. Visit: https://platform.openai.com/account/billing  
+  2. Add payment method or increase quota
+  3. Check usage limits at: https://platform.openai.com/account/usage
+
+For Google (Gemini):
+  1. Visit: https://makersuite.google.com/app/billing
+  2. Enable billing or increase quota
+
+ALTERNATIVE SOLUTIONS:
+  - Switch to a different AI provider (if you have multiple API keys)
+  - Wait for quota reset (if applicable)
+  - Use a different API key with available credits
+
+This is an AI-powered framework that requires API access to function.
+Analysis cannot proceed without resolving credit/billing issues.
+"""
+        
+        self.logger.critical("API credit/quota error detected")
+        print(error_message)
+        
+        # Update orchestrator status
+        self.results['orchestrator']['status'] = 'failed_credits'
+        self.results['orchestrator']['error'] = 'Insufficient API credits - analysis terminated'
+        self.results['orchestrator']['error_details'] = str(error)
+        self.results['orchestrator']['end_time'] = datetime.now().isoformat()
+        
+        # Exit immediately
+        sys.exit(1)
     
     def run_complete_analysis(self) -> Dict[str, Any]:
         """Execute complete autonomous analysis pipeline"""
@@ -334,31 +454,260 @@ class AgenticAlzheimerAnalyzer:
     
     def _generate_cross_agent_insights(self, discovery: Dict, analysis: Dict, 
                                      literature: Dict) -> List[str]:
-        """Generate insights by combining results from different agents"""
+        """Generate insights by combining results from different agents using AI analysis"""
         insights = []
         
-        # Data quality vs analysis power
-        data_quality = discovery.get('data_quality', {}).get('overall_score', 0)
-        sample_size = analysis.get('data_summary', {}).get('baseline_subjects', 0)
-        
-        if data_quality > 0.8 and sample_size > 200:
-            insights.append("High-quality dataset with adequate sample size enables robust statistical inference")
-        elif data_quality < 0.5 or sample_size < 100:
-            insights.append("Limited data quality or sample size may constrain interpretation of findings")
-        
-        # Literature validation
-        novelty_score = literature.get('novelty_analysis', {}).get('novelty_score', 0)
-        if novelty_score > 0.5:
-            insights.append("High novelty score suggests multiple novel findings requiring replication")
-        elif novelty_score < 0.2:
-            insights.append("Low novelty score indicates strong confirmation of existing literature")
-        
-        # Analysis-literature consistency
-        validation = literature.get('validation_results', {})
-        if validation.get('consistency_analysis', {}).get('consistent', False):
-            insights.append("Current findings are consistent with existing literature, increasing confidence")
+        try:
+            # Build comprehensive context for AI analysis
+            context = f"""
+Analyze the following multi-agent research findings and generate key insights by combining the results:
+
+DATA DISCOVERY RESULTS:
+- Data Quality Score: {discovery.get('data_quality', {}).get('overall_score', 0):.2f}
+- Files Analyzed: {discovery.get('dataset_info', {}).get('files_analyzed', 0)}
+- Total Subjects: {discovery.get('dataset_info', {}).get('total_subjects', 0)}
+- Assessment Types: {list(discovery.get('assessment_types', {}).keys())}
+
+STATISTICAL ANALYSIS RESULTS:
+- Sample Size: {analysis.get('data_summary', {}).get('baseline_subjects', 0)}
+- Significant Correlations: {len(analysis.get('cross_assessment_correlations', {}).get('significant_correlations', []))}
+- Effect Sizes: {[corr.get('effect_size', 'unknown') for corr in analysis.get('cross_assessment_correlations', {}).get('significant_correlations', [])[:3]]}
+
+LITERATURE RESEARCH RESULTS:
+- Papers Analyzed: {literature.get('papers_found', {}).get('total_unique_papers', 0)}
+- Novelty Score: {literature.get('novelty_analysis', {}).get('novelty_score', 0):.2f}
+- Novel Findings: {len(literature.get('novelty_analysis', {}).get('novel_findings', []))}
+
+Generate 3-5 key cross-agent insights that synthesize these findings. Focus on:
+1. Statistical power and clinical significance
+2. Data quality implications for findings
+3. Literature validation and novelty assessment
+4. Methodological strengths and limitations
+5. Clinical translation potential
+
+Format as concise bullet points, one insight per line.
+"""
+            
+            # Try Claude first, then OpenAI as fallback
+            if 'claude' in self.ai_clients:
+                client = self.ai_clients['claude']
+                
+                response = client.messages.create(
+                    model=self.config.get('ai_providers', {}).get('claude', {}).get('default_model', 'claude-3-sonnet-20240229'),
+                    max_tokens=600,
+                    messages=[{
+                        "role": "user", 
+                        "content": context
+                    }]
+                )
+                
+                # Log token usage with actual API response data  
+                input_tokens = response.usage.input_tokens if hasattr(response, 'usage') and hasattr(response.usage, 'input_tokens') else len(context.split()) * 1.3
+                output_tokens = response.usage.output_tokens if hasattr(response, 'usage') and hasattr(response.usage, 'output_tokens') else len(response.content[0].text.split()) * 1.3
+                
+                self.logger.info(f"🔍 Claude API Response - Input tokens: {input_tokens}, Output tokens: {output_tokens}")
+                
+                self.token_manager.log_usage(
+                    provider='claude',
+                    model=self.config.get('ai_providers', {}).get('claude', {}).get('default_model', 'claude-3-sonnet-20240229'),
+                    input_tokens=int(input_tokens),
+                    output_tokens=int(output_tokens), 
+                    request_type='cross_agent_insights'
+                )
+                
+                # Parse AI-generated insights
+                ai_insights = [line.strip().lstrip('•-* ') for line in response.content[0].text.strip().split('\n') if line.strip() and not line.strip().startswith('#')]
+                insights.extend(ai_insights[:5])
+                
+                self.logger.info(f"✨ Generated {len(ai_insights)} cross-agent insights using Claude")
+                
+            elif 'openai' in self.ai_clients:
+                client = self.ai_clients['openai']
+                
+                response = client.chat.completions.create(
+                    model=self.config.get('ai_providers', {}).get('openai', {}).get('default_model', 'gpt-4'),
+                    max_tokens=600,
+                    messages=[{
+                        "role": "user",
+                        "content": context
+                    }]
+                )
+                
+                # Log token usage with actual API response data
+                input_tokens = response.usage.prompt_tokens if hasattr(response, 'usage') and hasattr(response.usage, 'prompt_tokens') else len(context.split()) * 1.3
+                output_tokens = response.usage.completion_tokens if hasattr(response, 'usage') and hasattr(response.usage, 'completion_tokens') else len(response.choices[0].message.content.split()) * 1.3
+                
+                self.logger.info(f"🔍 OpenAI API Response - Input tokens: {input_tokens}, Output tokens: {output_tokens}")
+                
+                self.token_manager.log_usage(
+                    provider='openai',
+                    model=self.config.get('ai_providers', {}).get('openai', {}).get('default_model', 'gpt-4'),
+                    input_tokens=int(input_tokens),
+                    output_tokens=int(output_tokens),
+                    request_type='cross_agent_insights'
+                )
+                
+                # Parse AI-generated insights
+                ai_insights = [line.strip().lstrip('•-* ') for line in response.choices[0].message.content.strip().split('\n') if line.strip() and not line.strip().startswith('#')]
+                insights.extend(ai_insights[:5])
+                
+                self.logger.info(f"✨ Generated {len(ai_insights)} cross-agent insights using OpenAI")
+                
+            elif 'gemini' in self.ai_clients and GEMINI_AVAILABLE and genai is not None:
+                client = self.ai_clients['gemini']
+                
+                response = client.generate_content(context)
+                
+                # Gemini doesn't provide detailed token usage, so estimate
+                input_tokens = len(context.split()) * 1.3
+                output_tokens = len(response.text.split()) * 1.3 if hasattr(response, 'text') else 100
+                
+                self.logger.info(f"🔍 Gemini API Response - Input tokens: ~{int(input_tokens)}, Output tokens: ~{int(output_tokens)}")
+                
+                self.token_manager.log_usage(
+                    provider='gemini',
+                    model=self.config.get('ai_providers', {}).get('gemini', {}).get('default_model', 'gemini-pro'),
+                    input_tokens=int(input_tokens),
+                    output_tokens=int(output_tokens),
+                    request_type='cross_agent_insights'
+                )
+                
+                # Parse AI-generated insights
+                ai_insights = [line.strip().lstrip('•-* ') for line in response.text.strip().split('\n') if line.strip() and not line.strip().startswith('#')]
+                insights.extend(ai_insights[:5])
+                
+                self.logger.info(f"✨ Generated {len(ai_insights)} cross-agent insights using Gemini")
+                
+            else:
+                raise Exception("No AI clients available")
+                
+        except Exception as e:
+            # Check for credit/quota issues
+            if self._is_credit_error(str(e)):
+                self._handle_credit_error(e)
+            
+            self.logger.error(f"Failed to generate AI insights: {e}")
+            self.logger.error("Cannot proceed without AI analysis - this is an AI-powered framework")
+            return []
         
         return insights
+    
+    def _generate_ai_findings_summary(self) -> str:
+        """Generate AI-powered human-readable summary of key findings"""
+        try:
+            # Build comprehensive context from all analysis phases
+            discovery = self.results.get('discovery', {})
+            analysis = self.results.get('analysis', {})
+            literature = self.results.get('literature', {})
+            synthesis = self.results.get('synthesis', {})
+            
+            context = f"""
+As an expert Alzheimer's researcher, provide a clear, human-readable summary of the key findings from this comprehensive analysis:
+
+DATASET OVERVIEW:
+- Total Subjects: {discovery.get('dataset_info', {}).get('total_subjects', 0):,}
+- Assessment Types: {', '.join(discovery.get('assessment_types', {}).keys())}
+- Data Quality: High-quality multi-modal cognitive assessment dataset
+
+STATISTICAL FINDINGS:
+- Significant Correlations: {len(analysis.get('cross_assessment_correlations', {}).get('significant_correlations', []))}
+- Sample Size: {analysis.get('data_summary', {}).get('baseline_subjects', 0):,} subjects analyzed
+- Effect Sizes: {[corr.get('effect_size', 'unknown') for corr in analysis.get('cross_assessment_correlations', {}).get('significant_correlations', [])[:3]]}
+
+LITERATURE CONTEXT:
+- Papers Reviewed: {literature.get('papers_found', {}).get('total_unique_papers', 0)}
+- Novel Findings: {len(literature.get('novelty_analysis', {}).get('novel_findings', []))}
+- Research Context: Findings validated against existing literature
+
+AI-GENERATED INSIGHTS:
+- Cross-Agent Insights: {synthesis.get('cross_agent_insights', [])}
+- Novel Hypotheses: {synthesis.get('ai_generated_hypotheses', [])}
+
+Please provide a concise, engaging summary that highlights:
+1. The most important discoveries
+2. Clinical significance and implications  
+3. Novel contributions to the field
+4. Future research directions
+5. Practical applications
+
+Write in plain English for researchers, clinicians, and stakeholders. Focus on the "so what" - why these findings matter for Alzheimer's research and patient care.
+
+Format as 3-4 paragraphs, each with a clear focus.
+"""
+            
+            # Try Claude first, then OpenAI, then Gemini
+            if 'claude' in self.ai_clients:
+                client = self.ai_clients['claude']
+                response = client.messages.create(
+                    model=self.config.get('ai_providers', {}).get('claude', {}).get('default_model', 'claude-3-sonnet-20240229'),
+                    max_tokens=1000,
+                    messages=[{"role": "user", "content": context}]
+                )
+                
+                # Log token usage
+                input_tokens = response.usage.input_tokens if hasattr(response, 'usage') and hasattr(response.usage, 'input_tokens') else len(context.split()) * 1.3
+                output_tokens = response.usage.output_tokens if hasattr(response, 'usage') and hasattr(response.usage, 'output_tokens') else len(response.content[0].text.split()) * 1.3
+                
+                self.token_manager.log_usage(
+                    provider='claude',
+                    model=self.config.get('ai_providers', {}).get('claude', {}).get('default_model', 'claude-3-sonnet-20240229'),
+                    input_tokens=int(input_tokens),
+                    output_tokens=int(output_tokens),
+                    request_type='findings_summary'
+                )
+                
+                return response.content[0].text.strip()
+                
+            elif 'openai' in self.ai_clients:
+                client = self.ai_clients['openai']
+                response = client.chat.completions.create(
+                    model=self.config.get('ai_providers', {}).get('openai', {}).get('default_model', 'gpt-4'),
+                    max_tokens=1000,
+                    messages=[{"role": "user", "content": context}]
+                )
+                
+                # Log token usage
+                input_tokens = response.usage.prompt_tokens if hasattr(response, 'usage') and hasattr(response.usage, 'prompt_tokens') else len(context.split()) * 1.3
+                output_tokens = response.usage.completion_tokens if hasattr(response, 'usage') and hasattr(response.usage, 'completion_tokens') else len(response.choices[0].message.content.split()) * 1.3
+                
+                self.token_manager.log_usage(
+                    provider='openai',
+                    model=self.config.get('ai_providers', {}).get('openai', {}).get('default_model', 'gpt-4'),
+                    input_tokens=int(input_tokens),
+                    output_tokens=int(output_tokens),
+                    request_type='findings_summary'
+                )
+                
+                return response.choices[0].message.content.strip()
+                
+            elif 'gemini' in self.ai_clients and GEMINI_AVAILABLE and genai is not None:
+                client = self.ai_clients['gemini']
+                response = client.generate_content(context)
+                
+                # Log token usage (estimated for Gemini)
+                input_tokens = len(context.split()) * 1.3
+                output_tokens = len(response.text.split()) * 1.3 if hasattr(response, 'text') else 100
+                
+                self.token_manager.log_usage(
+                    provider='gemini',
+                    model=self.config.get('ai_providers', {}).get('gemini', {}).get('default_model', 'gemini-pro'),
+                    input_tokens=int(input_tokens),
+                    output_tokens=int(output_tokens),
+                    request_type='findings_summary'
+                )
+                
+                return response.text.strip()
+                
+            else:
+                return "❌ No AI clients available - cannot generate findings summary. This framework requires AI analysis."
+                
+        except Exception as e:
+            # Check for credit/quota issues
+            if self._is_credit_error(str(e)):
+                self._handle_credit_error(e)
+            
+            self.logger.error(f"Failed to generate AI findings summary: {e}")
+            return "❌ Failed to generate AI-powered findings summary. Check API keys and connectivity."
     
     def _identify_novel_discoveries(self, analysis: Dict, literature: Dict) -> List[str]:
         """Identify potentially novel discoveries"""
@@ -423,17 +772,137 @@ class AgenticAlzheimerAnalyzer:
         return implications
     
     def _generate_ai_hypotheses(self) -> List[str]:
-        """Generate AI-powered hypotheses (placeholder for AI integration)"""
+        """Generate AI-powered hypotheses using Claude API"""
         hypotheses = []
         
-        # This would integrate with AI clients to generate novel hypotheses
-        # For now, return rule-based hypotheses
-        
-        hypotheses.extend([
-            "Digital cognitive assessments may detect subtle changes before self-report measures",
-            "Informant reports may be more sensitive to early functional changes",
-            "Multi-modal assessment combining self-report and digital measures improves early detection"
-        ])
+        try:
+            # Get analysis and discovery results for context
+            analysis_results = self.results.get('analysis', {})
+            discovery_results = self.results.get('discovery', {})
+            
+            # Build context prompt
+            context = f"""
+Based on the following cognitive assessment analysis results, generate novel research hypotheses:
+
+Dataset Overview:
+- Total subjects: {discovery_results.get('dataset_info', {}).get('total_subjects', 'unknown')}
+- Assessment types found: {', '.join(discovery_results.get('assessment_types', {}).keys()) if discovery_results.get('assessment_types') else 'various'}
+
+Key Statistical Findings:
+- Significant correlations found: {len(analysis_results.get('cross_assessment_correlations', {}).get('significant_correlations', []))}
+- Sample characteristics: {analysis_results.get('sample_characteristics', 'Not available')}
+
+Please generate 3-5 novel, testable research hypotheses that could advance our understanding of cognitive assessment relationships. Focus on:
+1. Clinical implications for early detection
+2. Multi-modal assessment advantages
+3. Novel biomarker discovery opportunities
+4. Methodological innovations
+
+Format as a simple list of hypotheses, one per line.
+"""
+            
+            # Try Claude first, then OpenAI as fallback
+            if 'claude' in self.ai_clients:
+                client = self.ai_clients['claude']
+                
+                response = client.messages.create(
+                    model=self.config.get('ai_providers', {}).get('claude', {}).get('default_model', 'claude-3-sonnet-20240229'),
+                    max_tokens=800,
+                    messages=[{
+                        "role": "user",
+                        "content": context
+                    }]
+                )
+                
+                # Log token usage with actual API response data
+                input_tokens = response.usage.input_tokens if hasattr(response, 'usage') and hasattr(response.usage, 'input_tokens') else len(context.split()) * 1.3
+                output_tokens = response.usage.output_tokens if hasattr(response, 'usage') and hasattr(response.usage, 'output_tokens') else len(response.content[0].text.split()) * 1.3
+                
+                self.logger.info(f"🔍 Claude API Response - Input tokens: {input_tokens}, Output tokens: {output_tokens}")
+                
+                self.token_manager.log_usage(
+                    provider='claude',
+                    model=self.config.get('ai_providers', {}).get('claude', {}).get('default_model', 'claude-3-sonnet-20240229'),
+                    input_tokens=int(input_tokens),
+                    output_tokens=int(output_tokens),
+                    request_type='hypothesis_generation'
+                )
+                
+                # Parse response into list of hypotheses
+                ai_hypotheses = [line.strip() for line in response.content[0].text.strip().split('\n') if line.strip() and not line.strip().startswith('#')]
+                hypotheses.extend(ai_hypotheses[:5])  # Limit to 5 hypotheses
+                
+                self.logger.info(f"✨ Generated {len(ai_hypotheses)} AI-powered hypotheses using Claude")
+                
+            elif 'openai' in self.ai_clients:
+                client = self.ai_clients['openai']
+                
+                response = client.chat.completions.create(
+                    model=self.config.get('ai_providers', {}).get('openai', {}).get('default_model', 'gpt-4'),
+                    max_tokens=800,
+                    messages=[{
+                        "role": "user",
+                        "content": context
+                    }]
+                )
+                
+                # Log token usage with actual API response data  
+                input_tokens = response.usage.prompt_tokens if hasattr(response, 'usage') and hasattr(response.usage, 'prompt_tokens') else len(context.split()) * 1.3
+                output_tokens = response.usage.completion_tokens if hasattr(response, 'usage') and hasattr(response.usage, 'completion_tokens') else len(response.choices[0].message.content.split()) * 1.3
+                
+                self.logger.info(f"🔍 OpenAI API Response - Input tokens: {input_tokens}, Output tokens: {output_tokens}")
+                
+                self.token_manager.log_usage(
+                    provider='openai',
+                    model=self.config.get('ai_providers', {}).get('openai', {}).get('default_model', 'gpt-4'),
+                    input_tokens=int(input_tokens),
+                    output_tokens=int(output_tokens),
+                    request_type='hypothesis_generation'
+                )
+                
+                # Parse response into list of hypotheses
+                ai_hypotheses = [line.strip() for line in response.choices[0].message.content.strip().split('\n') if line.strip() and not line.strip().startswith('#')]
+                hypotheses.extend(ai_hypotheses[:5])  # Limit to 5 hypotheses
+                
+                self.logger.info(f"✨ Generated {len(ai_hypotheses)} AI-powered hypotheses using OpenAI")
+                
+            elif 'gemini' in self.ai_clients and GEMINI_AVAILABLE and genai is not None:
+                client = self.ai_clients['gemini']
+                
+                response = client.generate_content(context)
+                
+                # Gemini doesn't provide detailed token usage, so estimate
+                input_tokens = len(context.split()) * 1.3  
+                output_tokens = len(response.text.split()) * 1.3 if hasattr(response, 'text') else 100
+                
+                self.logger.info(f"🔍 Gemini API Response - Input tokens: ~{int(input_tokens)}, Output tokens: ~{int(output_tokens)}")
+                
+                self.token_manager.log_usage(
+                    provider='gemini',
+                    model=self.config.get('ai_providers', {}).get('gemini', {}).get('default_model', 'gemini-pro'),
+                    input_tokens=int(input_tokens),
+                    output_tokens=int(output_tokens),
+                    request_type='hypothesis_generation'
+                )
+                
+                # Parse response into list of hypotheses
+                ai_hypotheses = [line.strip() for line in response.text.strip().split('\n') if line.strip() and not line.strip().startswith('#')]
+                hypotheses.extend(ai_hypotheses[:5])  # Limit to 5 hypotheses
+                
+                self.logger.info(f"✨ Generated {len(ai_hypotheses)} AI-powered hypotheses using Gemini")
+                
+            else:
+                self.logger.warning("No AI clients available, using fallback hypotheses")
+                raise Exception("No AI clients available")
+                
+        except Exception as e:
+            # Check for credit/quota issues
+            if self._is_credit_error(str(e)):
+                self._handle_credit_error(e)
+            
+            self.logger.error(f"Failed to generate AI hypotheses: {e}")
+            self.logger.error("Cannot proceed without AI analysis - this is an AI-powered framework")
+            return []
         
         return hypotheses
     
@@ -675,25 +1144,40 @@ Autonomous AI agents analyzed {sample_size:,} subjects to explore relationships 
             return obj
     
     def _print_final_summary(self):
-        """Print comprehensive final summary"""
+        """Print and save AI-generated findings summary"""
+        # Generate AI-powered summary of key findings
+        findings_summary = self._generate_ai_findings_summary()
+        
+        # Save summary to file for persistence
+        try:
+            with open('outputs/key_findings_summary.md', 'w') as f:
+                f.write("# Key Findings Summary\n\n")
+                f.write(f"**Analysis Date**: {datetime.now().strftime('%B %d, %Y')}\n")
+                f.write(f"**Experiment**: {self.config.get('experiment', {}).get('name', 'Cognitive Assessment Analysis')}\n\n")
+                f.write(findings_summary)
+                f.write(f"\n\n---\n*Generated by Autonomous AI Analysis*")
+            self.logger.info("💾 Key findings summary saved to outputs/key_findings_summary.md")
+        except Exception as e:
+            self.logger.warning(f"Failed to save findings summary: {e}")
+        
+        # Display summary
         print("\n" + "="*100)
-        print("🤖 AGENTIC ALZHEIMER'S ANALYZER - FINAL SUMMARY")
+        print("🤖 AI-GENERATED FINDINGS SUMMARY")
+        print("="*100)
+        print(findings_summary)
         print("="*100)
         
-        # Overview
-        start_time = self.results['orchestrator']['start_time']
-        duration = self.results['orchestrator']['total_duration']
-        status = self.results['orchestrator']['status']
-        
-        print(f"\n⏱️ ANALYSIS OVERVIEW:")
-        print(f"   Start Time: {start_time}")
-        print(f"   Duration: {duration}")
-        print(f"   Status: {status.upper()}")
-        
-        # Agent Results Summary
+        # Show basic stats
         discovery = self.results.get('discovery', {})
         analysis = self.results.get('analysis', {})
         literature = self.results.get('literature', {})
+        
+        print(f"\n📊 ANALYSIS STATISTICS:")
+        print(f"   Duration: {self.results['orchestrator']['total_duration']}")
+        print(f"   Subjects: {discovery.get('dataset_info', {}).get('total_subjects', 0):,}")
+        print(f"   Significant Findings: {len(analysis.get('cross_assessment_correlations', {}).get('significant_correlations', []))}")
+        print(f"   Papers Reviewed: {literature.get('papers_found', {}).get('total_unique_papers', 0)}")
+        print(f"   Token Usage: See complete analysis results for details")
         
         print(f"\n🔍 DISCOVERY PHASE:")
         files_found = discovery.get('files_discovered', {}).get('total_files_found', 0)

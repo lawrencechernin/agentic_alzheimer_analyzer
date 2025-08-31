@@ -54,6 +54,7 @@ experiment:
     - "Correlate ECOG scores with MemTrax performance"
     - "Identify discrepancy patterns between self and informant reports"
     - "Find novel biomarker candidates based on multi-modal assessment"
+    - "Evaluate MemTrax predictive power for cognitive impairment detection"
   
   secondary_analyses:
     - "Age-stratified correlation patterns"
@@ -68,6 +69,8 @@ experiment:
     memtrax_rt: ["reaction_time", "response_time", "rt", "CorrectResponsesRT"]
     memtrax_accuracy: ["accuracy", "percent_correct", "CorrectPCT"]
     demographics: ["age", "education", "gender"]
+    cognitive_status: ["diagnosis", "cognitive_status", "impairment", "dementia", "MCI", "cognitively_normal"]
+    clinical_outcomes: ["CDR", "MMSE", "MoCA", "clinical_diagnosis", "severity"]
 
 # AI Configuration
 ai_providers:
@@ -77,8 +80,8 @@ ai_providers:
   claude:
     enabled: true
     api_key_env: "ANTHROPIC_API_KEY"  # Environment variable name
-    default_model: "claude-3-sonnet-20240229"
-    fallback_model: "claude-3-haiku-20240307"
+    default_model: "claude-3-5-sonnet-20241022"
+    fallback_model: "claude-3-5-haiku-20241022"
     max_tokens: 4000
     
   openai:
@@ -103,8 +106,8 @@ discovery:
 # Analysis Configuration
 analysis:
   # Data sampling for large datasets
-  use_sampling: true          # Sample data for analysis to prevent memory issues
-  analysis_sample_size: 5000  # Max rows per dataset to analyze (prevents Cartesian explosion)
+  use_sampling: false         # Sample data for analysis to prevent memory issues
+  analysis_sample_size: 20000 # Max rows per dataset to analyze (prevents Cartesian explosion)
   
   # Data quality thresholds
   quality_thresholds:

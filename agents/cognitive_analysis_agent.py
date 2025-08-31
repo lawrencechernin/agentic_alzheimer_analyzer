@@ -1687,8 +1687,8 @@ class CognitiveAnalysisAgent:
                 # Clinical insights with F1-score information
                 insights = []
                 test_acc = prediction_results['best_model']['test_accuracy']
-                classification_report = prediction_results['best_model']['classification_report']
-                weighted_f1 = classification_report.get('weighted avg', {}).get('f1-score', 0)
+                classification_report_data = prediction_results['best_model']['classification_report']
+                weighted_f1 = classification_report_data.get('weighted avg', {}).get('f1-score', 0)
                 
                 if test_acc > 0.8:
                     insights.append("Excellent CDR prediction accuracy achieved (>80%)")
@@ -1709,9 +1709,9 @@ class CognitiveAnalysisAgent:
                 self.logger.info(f"      📊 CV Accuracy: {best_score:.1%}")
                 
                 # Log per-class performance
-                if '0' in classification_report and '1' in classification_report:
+                if '0' in classification_report_data and '1' in classification_report_data:
                     self.logger.info(f"   📋 Per-class performance:")
-                    for class_name, metrics in classification_report.items():
+                    for class_name, metrics in classification_report_data.items():
                         if class_name.isdigit():
                             cdr_value = {0: '0.0', 1: '0.5', 2: '1.0'}.get(int(class_name), class_name)
                             f1 = metrics.get('f1-score', 0)

@@ -627,14 +627,14 @@ DATASET OVERVIEW:
 STATISTICAL FINDINGS:
 - Significant Correlations: {len(analysis.get('cross_assessment_correlations', {}).get('significant_correlations', []))}
 - Sample Size: {analysis.get('data_summary', {}).get('baseline_subjects', 0):,} subjects analyzed
-- Effect Sizes: {[corr.get('effect_size', 'unknown') for corr in analysis.get('cross_assessment_correlations', {}).get('significant_correlations', [])[:3]]}
+- Effect Sizes: {[corr.get('effect_size', 'unknown') for corr in (analysis.get('cross_assessment_correlations', {}).get('significant_correlations') or [])[:3]] if analysis.get('cross_assessment_correlations', {}).get('significant_correlations') else 'No correlations found'}
 
 MACHINE LEARNING RESULTS:
 - Advanced CDR Prediction: {f"{analysis.get('advanced_cdr_prediction', {}).get('best_model', {}).get('test_accuracy', 0):.1%} accuracy achieved" if analysis.get('advanced_cdr_prediction', {}).get('best_model') else "No ML analysis performed"}
 - Best Model: {analysis.get('advanced_cdr_prediction', {}).get('best_model', {}).get('name', 'None')}
 - Weighted F1-Score: {f"{analysis.get('advanced_cdr_prediction', {}).get('best_model', {}).get('classification_report', {}).get('weighted avg', {}).get('f1-score', 0):.3f}" if analysis.get('advanced_cdr_prediction', {}).get('best_model') else "N/A"}
 - Models Tested: {len(analysis.get('advanced_cdr_prediction', {}).get('models_tested', []))} algorithms evaluated
-- Key Predictors: {', '.join([f"{feat['feature']}: {feat['importance']:.3f}" for feat in analysis.get('advanced_cdr_prediction', {}).get('feature_importance', [])[:3]])}
+- Key Predictors: {', '.join([f"{feat['feature']}: {feat['importance']:.3f}" for feat in (analysis.get('advanced_cdr_prediction', {}).get('feature_importance') or [])[:3]]) if analysis.get('advanced_cdr_prediction', {}).get('feature_importance') else 'No feature importance available'}
 
 LITERATURE CONTEXT:
 - Papers Reviewed: {literature.get('papers_found', {}).get('total_unique_papers', 0)}

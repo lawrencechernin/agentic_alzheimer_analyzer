@@ -9,6 +9,7 @@ scipy>=1.9.0
 # Statistics and analysis
 scikit-learn>=1.1.0
 statsmodels>=0.13.0
+xgboost>=1.6.0
 
 # Visualization
 matplotlib>=3.5.0

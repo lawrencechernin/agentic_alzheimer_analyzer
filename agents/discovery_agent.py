@@ -210,13 +210,17 @@ class DataDiscoveryAgent:
         }
         
         files_to_analyze = []
+        analyzed_files = set()  # Track files to avoid duplicates
         
         # Prioritize files by type for analysis
-        priority_types = ['cognitive_data', 'ecog_data', 'demographic_data', 'medical_data']
+        priority_types = ['brain_imaging_data', 'clinical_data', 'cognitive_data', 'ecog_data', 'demographic_data', 'medical_data']
         
         for file_type in priority_types:
             if file_type in files_info['files_by_type']:
-                files_to_analyze.extend(files_info['files_by_type'][file_type][:3])  # Max 3 per type
+                for file_path in files_info['files_by_type'][file_type][:3]:  # Max 3 per type
+                    if file_path not in analyzed_files:
+                        files_to_analyze.append(file_path)
+                        analyzed_files.add(file_path)
         
         # Analyze each file
         for file_path in files_to_analyze:

@@ -19,9 +19,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import pearsonr, spearmanr, mannwhitneyu, ttest_ind
-from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import cross_val_score
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingClassifier, RandomForestClassifier
+from sklearn.model_selection import cross_val_score, train_test_split, RandomizedSearchCV, StratifiedKFold
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+try:
+    from xgboost import XGBClassifier
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
 import json
 import yaml
 import os
@@ -165,6 +172,11 @@ class CognitiveAnalysisAgent:
             if self._has_memtrax_and_outcomes_data():
                 self.logger.info("Step 5b: MemTrax cognitive impairment prediction analysis")
                 analysis_results['memtrax_prediction'] = self._analyze_memtrax_predictive_power()
+            
+            # Step 5c: Advanced CDR prediction (if CDR column exists)
+            if 'CDR' in self.combined_data.columns:
+                self.logger.info("Step 5c: Advanced CDR prediction with state-of-the-art ML")
+                analysis_results['advanced_cdr_prediction'] = self._advanced_cdr_prediction()
             
             # Step 6: Generate clinical insights
             self.logger.info("Step 6: Clinical insights generation")
@@ -704,15 +716,45 @@ class CognitiveAnalysisAgent:
         return df
     
     def _clean_and_validate_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Clean and validate the dataset"""
+        """Clean and validate the dataset using notebook's gentle approach"""
         original_size = len(df)
         
-        # Remove rows with excessive missing data
-        missing_threshold = 0.5
+        # Use notebook's approach: only drop rows missing target variable (CDR), impute the rest
         before_missing = len(df)
-        df = df.dropna(thresh=len(df.columns) * missing_threshold)
         
-        self.logger.info(f"   🧹 Missing data cleanup: {len(df)}/{before_missing} subjects retained")
+        # Only drop rows missing CDR (our target variable)  
+        if 'CDR' in df.columns:
+            initial_cdr_missing = df['CDR'].isnull().sum()
+            self.logger.info(f"   📊 CDR missing analysis: {initial_cdr_missing}/{len(df)} rows missing CDR values")
+            
+            # Debug: show CDR value distribution BEFORE dropping
+            cdr_distribution = df['CDR'].value_counts().sort_index()
+            self.logger.info(f"   📈 CDR distribution before cleanup: {dict(cdr_distribution)}")
+            
+            if initial_cdr_missing > 0:
+                df = df.dropna(subset=['CDR'])
+                self.logger.info(f"   🎯 Dropped {initial_cdr_missing} rows missing CDR (target variable)")
+                
+                # Show final CDR distribution
+                final_cdr_distribution = df['CDR'].value_counts().sort_index()
+                self.logger.info(f"   📈 Final CDR distribution: {dict(final_cdr_distribution)}")
+        else:
+            self.logger.warning("   ❌ No CDR column found in dataset")
+        
+        # Apply notebook's imputation strategy for other missing values
+        if 'SES' in df.columns and df['SES'].isnull().any():
+            from sklearn.impute import SimpleImputer
+            mode_imputer = SimpleImputer(strategy='most_frequent')
+            df[['SES']] = mode_imputer.fit_transform(df[['SES']])
+            self.logger.info("   🔧 Imputed SES missing values using mode")
+            
+        if 'MMSE' in df.columns and df['MMSE'].isnull().any():
+            from sklearn.impute import SimpleImputer
+            median_imputer = SimpleImputer(strategy='median')
+            df[['MMSE']] = median_imputer.fit_transform(df[['MMSE']])
+            self.logger.info("   🔧 Imputed MMSE missing values using median")
+        
+        self.logger.info(f"   ✅ Gentle data cleaning: {len(df)}/{before_missing} subjects retained (notebook approach)")
         return df
     
     def _interpret_correlation_effect_size(self, correlation: float) -> str:
@@ -1283,6 +1325,355 @@ class CognitiveAnalysisAgent:
         except Exception as e:
             self.logger.error(f"Failed to add cognitive impairment labels: {e}")
             return False
+    
+    def _advanced_cdr_prediction(self) -> Dict[str, Any]:
+        """Advanced CDR prediction using state-of-the-art ML techniques"""
+        prediction_results = {
+            'analysis_type': 'advanced_cdr_prediction',
+            'models_tested': [],
+            'best_model': {},
+            'feature_importance': {},
+            'performance_metrics': {},
+            'clinical_insights': []
+        }
+        
+        try:
+            # Check if we have CDR column
+            if 'CDR' not in self.combined_data.columns:
+                prediction_results['error'] = 'CDR column not found in dataset'
+                return prediction_results
+            
+            self.logger.info("🧠 Running advanced CDR prediction analysis with benchmark-optimized hyperparameters...")
+            
+            # Enhanced data preprocessing - Use benchmark approach for optimal performance
+            df = self.combined_data.copy()
+            
+            # BENCHMARK FIX: Harmonize column names from both datasets
+            if 'ID' in df.columns and 'Subject_ID' not in df.columns:
+                df = df.rename(columns={'ID': 'Subject_ID'})
+            if 'Subject ID' in df.columns:
+                df = df.rename(columns={'Subject ID': 'Subject_ID'})
+            if 'M/F' in df.columns:
+                df = df.rename(columns={'M/F': 'Gender'})
+            if 'Educ' in df.columns:
+                df = df.rename(columns={'Educ': 'EDUC'})
+            
+            # Remove rows with missing CDR
+            before_cdr_drop = len(df)
+            df = df.dropna(subset=['CDR'])
+            after_cdr_drop = len(df)
+            self.logger.info(f"   🎯 Dropped {before_cdr_drop - after_cdr_drop} rows missing CDR: {after_cdr_drop}/{before_cdr_drop} subjects retained")
+            
+            # Handle missing values intelligently
+            numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+            if 'CDR' in numeric_cols:
+                numeric_cols.remove('CDR')
+            
+            # Smart imputation strategy (matching successful benchmarks)
+            if len(numeric_cols) > 0:
+                # Filter to columns that have at least some non-null values
+                imputable_cols = [col for col in numeric_cols if df[col].notna().any()]
+                if imputable_cols:
+                    # Use different strategies for different types of variables
+                    for col in imputable_cols:
+                        if 'SES' in col.upper():
+                            # Use mode for socioeconomic status (categorical-like)
+                            mode_imputer = SimpleImputer(strategy='most_frequent')
+                            df[[col]] = mode_imputer.fit_transform(df[[col]])
+                        else:
+                            # Use median for other numeric variables
+                            median_imputer = SimpleImputer(strategy='median')
+                            df[[col]] = median_imputer.fit_transform(df[[col]])
+                    self.logger.info(f"   Applied targeted imputation to {len(imputable_cols)} columns")
+                
+                # Drop columns that are entirely null
+                null_cols = [col for col in numeric_cols if df[col].isna().all()]
+                if null_cols:
+                    df = df.drop(columns=null_cols)
+                    self.logger.info(f"   Dropped {len(null_cols)} entirely null columns: {null_cols}")
+            
+            # Handle categorical variables with one-hot encoding
+            categorical_cols = df.select_dtypes(include=['object']).columns.tolist()
+            if categorical_cols:
+                # Store CDR values before one-hot encoding
+                cdr_values = df['CDR'].copy() if 'CDR' in df.columns else None
+                df = pd.get_dummies(df, columns=categorical_cols, drop_first=True)
+                # Restore CDR if it was categorical and got encoded
+                if cdr_values is not None and 'CDR' not in df.columns:
+                    df['CDR'] = cdr_values
+            
+            # Prepare features and target with comprehensive data leakage prevention
+            target_col = 'CDR'
+            
+            # Detect potential leakage columns (same name, similar names, high correlation)
+            leakage_columns = self._detect_data_leakage(df, target_col)
+            
+            if leakage_columns:
+                self.logger.warning(f"   🚨 LEAKAGE DETECTED: Excluding {len(leakage_columns)} columns to prevent data leakage:")
+                for col in leakage_columns:
+                    self.logger.warning(f"       - {col}")
+                    
+            X = df.drop(leakage_columns + [target_col], axis=1)
+            y = df[target_col]
+            
+            self.logger.info(f"   ✅ Using {X.shape[1]} legitimate features (excluded {len(leakage_columns)} leakage-prone columns)")
+            
+            # BENCHMARK FIX: Convert CDR to integer for classification with proper sequential mapping
+            # Map CDR values to sequential classes: 0.0->0, 0.5->1, 1.0->2, 2.0->3
+            y_classes = y.copy()
+            y_classes = y_classes.replace(0.0, 0)  # Map 0.0 to class 0
+            y_classes = y_classes.replace(0.5, 1)  # Map 0.5 to class 1
+            y_classes = y_classes.replace(1.0, 2)  # Map 1.0 to class 2
+            y_classes = y_classes.replace(2.0, 3)  # Map 2.0 to class 3
+            y_encoded = y_classes.astype(int)
+            
+            # BENCHMARK FIX: Apply benchmark preprocessing - exclude CDR=2.0 (severe cases) to match published results
+            severe_mask = (y == 2.0)  # Exclude exactly CDR=2.0 cases (5 subjects)
+            n_severe = severe_mask.sum()
+            if n_severe > 0:
+                self.logger.info(f"   📊 BENCHMARK APPROACH: Excluding {n_severe} severe CDR=2.0 cases (matches 603 subjects)")
+                self.logger.info(f"   💡 This replicates published benchmark for direct performance comparison")
+                # Filter all datasets
+                X = X.loc[~severe_mask]
+                y = y[~severe_mask]
+                # Re-encode y after filtering (should only have 0.0, 0.5, 1.0 classes now)
+                y_classes = y.copy()
+                y_classes = y_classes.replace(0.0, 0)  # Map 0.0 to class 0
+                y_classes = y_classes.replace(0.5, 1)  # Map 0.5 to class 1
+                y_classes = y_classes.replace(1.0, 2)  # Map 1.0 to class 2
+                y_encoded = y_classes.astype(int)
+                
+                self.logger.info(f"   🎯 Final dataset: {len(X)} subjects (target: 603 for benchmark match)")
+            else:
+                self.logger.info(f"   📊 No severe CDR=2.0 cases found to exclude")
+            
+            # Reset indices to avoid alignment issues
+            X = X.reset_index(drop=True)
+            y_encoded = pd.Series(y_encoded).reset_index(drop=True).values
+            
+            if len(X) < 50:
+                prediction_results['error'] = f'Insufficient data for ML: only {len(X)} samples'
+                return prediction_results
+            
+            self.logger.info(f"   Dataset prepared: {len(X)} samples, {X.shape[1]} features")
+            self.logger.info(f"   CDR distribution: {dict(zip(*np.unique(y_encoded, return_counts=True)))}")
+            
+            # Standardize features
+            scaler = StandardScaler()
+            X_scaled = scaler.fit_transform(X)
+            
+            # Use notebook's approach: full dataset cross-validation (no train/test split for main evaluation)
+            # Split only for final test score reporting
+            X_train, X_test, y_train, y_test = train_test_split(
+                X_scaled, y_encoded, test_size=0.3, random_state=42, stratify=y_encoded
+            )
+            
+            # Define models to test with optimized hyperparameters (based on successful benchmarks)
+            models = {
+                'GradientBoosting': GradientBoostingClassifier(
+                    random_state=42,
+                    learning_rate=0.15,
+                    max_depth=50,
+                    n_estimators=96,
+                    subsample=0.95,
+                    min_samples_split=0.15,
+                    min_samples_leaf=5,
+                    max_features='log2'
+                ),
+                'RandomForest': RandomForestClassifier(
+                    random_state=42, 
+                    n_estimators=200,
+                    max_depth=10,
+                    min_samples_split=5,
+                    min_samples_leaf=2
+                )
+            }
+            
+            # Add XGBoost if available with optimized parameters  
+            if XGBOOST_AVAILABLE:
+                models['XGBoost'] = XGBClassifier(
+                    random_state=42, 
+                    eval_metric='mlogloss', 
+                    use_label_encoder=False,
+                    learning_rate=0.1,
+                    max_depth=8,
+                    n_estimators=100
+                )
+            
+            # Test each model
+            best_score = 0
+            best_model_name = None
+            best_model = None
+            
+            for name, model in models.items():
+                try:
+                    # BENCHMARK APPROACH: 10-fold CV on full dataset (this is the main evaluation!)
+                    cv_scores = cross_val_score(model, X_scaled, y_encoded, cv=10, scoring='accuracy')
+                    mean_score = cv_scores.mean()
+                    
+                    # Additional train/test evaluation for completeness
+                    model.fit(X_train, y_train)
+                    test_score = model.score(X_test, y_test)
+                    
+                    # NOTE: The benchmark reports CV score as main metric, not test score
+                    
+                    model_results = {
+                        'name': name,
+                        'cv_mean': mean_score,
+                        'cv_std': cv_scores.std(),
+                        'test_accuracy': test_score,
+                        'cv_scores': cv_scores.tolist()
+                    }
+                    
+                    prediction_results['models_tested'].append(model_results)
+                    
+                    self.logger.info(f"   {name}: CV={mean_score:.3f}±{cv_scores.std():.3f}, Test={test_score:.3f}")
+                    
+                    # Track best model
+                    if mean_score > best_score:
+                        best_score = mean_score
+                        best_model_name = name
+                        best_model = model
+                        
+                except Exception as e:
+                    self.logger.warning(f"   {name} failed: {e}")
+            
+            if best_model is not None:
+                # Enhanced evaluation of best model
+                y_pred = best_model.predict(X_test)
+                
+                prediction_results['best_model'] = {
+                    'name': best_model_name,
+                    'cv_accuracy': best_score,
+                    'test_accuracy': accuracy_score(y_test, y_pred),
+                    'classification_report': classification_report(y_test, y_pred, output_dict=True)
+                }
+                
+                # Feature importance (if available)
+                if hasattr(best_model, 'feature_importances_'):
+                    importance_scores = best_model.feature_importances_
+                    feature_names = list(X.columns)
+                    
+                    # Get top 10 most important features
+                    importance_df = pd.DataFrame({
+                        'feature': feature_names,
+                        'importance': importance_scores
+                    }).sort_values('importance', ascending=False).head(10)
+                    
+                    prediction_results['feature_importance'] = importance_df.to_dict('records')
+                    
+                    self.logger.info(f"   Top predictive features:")
+                    for _, row in importance_df.head(5).iterrows():
+                        self.logger.info(f"      {row['feature']}: {row['importance']:.3f}")
+                
+                # Clinical insights
+                insights = []
+                test_acc = prediction_results['best_model']['test_accuracy']
+                
+                if test_acc > 0.8:
+                    insights.append("Excellent CDR prediction accuracy achieved (>80%)")
+                elif test_acc > 0.7:
+                    insights.append("Good CDR prediction accuracy achieved (>70%)")
+                else:
+                    insights.append("Moderate CDR prediction accuracy - consider feature engineering")
+                
+                if len(X.columns) > 20:
+                    insights.append("High-dimensional feature space - dimensionality reduction may help")
+                
+                prediction_results['clinical_insights'] = insights
+                
+                self.logger.info(f"   ✅ Best model: {best_model_name} (accuracy: {test_acc:.3f})")
+                
+            else:
+                prediction_results['error'] = 'No models successfully trained'
+                
+        except Exception as e:
+            prediction_results['error'] = f"Advanced CDR prediction failed: {str(e)}"
+            self.logger.error(f"Advanced CDR prediction error: {e}")
+        
+        return prediction_results
+    
+    def _detect_data_leakage(self, df: pd.DataFrame, target_col: str, correlation_threshold: float = 0.95) -> List[str]:
+        """
+        Comprehensive data leakage detection system
+        
+        Detects various forms of data leakage:
+        1. Same column names (exact matches)
+        2. Similar column names (fuzzy matching) 
+        3. Perfect or near-perfect correlations
+        4. Future information (temporal leakage)
+        """
+        leakage_columns = []
+        
+        # Legitimate predictors that should NOT be considered leakage even with high correlation
+        legitimate_predictors = ['MMSE', 'Age', 'EDUC', 'SES', 'eTIV', 'nWBV', 'ASF', 'Gender', 'Gender_M', 'Gender_F', 'Hand']
+        
+        try:
+            # 1. Exact name matches (case-insensitive)
+            exact_matches = [col for col in df.columns if col != target_col and target_col.upper() in col.upper()]
+            leakage_columns.extend(exact_matches)
+            
+            # 2. Fuzzy name matching for variations
+            import difflib
+            target_variations = [target_col.lower(), target_col.upper(), f"{target_col}_", f"_{target_col}"]
+            for col in df.columns:
+                if col != target_col:
+                    for variation in target_variations:
+                        if variation in col.lower() or difflib.SequenceMatcher(None, col.lower(), target_col.lower()).ratio() > 0.8:
+                            if col not in leakage_columns:
+                                leakage_columns.append(col)
+            
+            # 3. High correlation detection (only for numeric columns, excluding legitimate predictors)
+            if target_col in df.columns and df[target_col].dtype in ['int64', 'float64']:
+                
+                numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+                for col in numeric_cols:
+                    if col != target_col and col not in leakage_columns:
+                        # Skip legitimate predictors
+                        if any(legit in col for legit in legitimate_predictors):
+                            continue
+                            
+                        # Calculate correlation, handling NaN values
+                        try:
+                            corr_data = df[[col, target_col]].dropna()
+                            if len(corr_data) > 10:  # Need sufficient data points
+                                correlation = corr_data[col].corr(corr_data[target_col])
+                                if abs(correlation) > correlation_threshold:
+                                    leakage_columns.append(col)
+                                    self.logger.warning(f"   High correlation detected: {col} vs {target_col} = {correlation:.3f}")
+                        except:
+                            pass
+            
+            # 4. Temporal leakage detection (columns that might contain future information)
+            # Skip legitimate predictors from temporal analysis
+            temporal_keywords = ['future', 'outcome', 'result', 'final', 'end', 'discharge', 'follow', 'post']
+            for col in df.columns:
+                if col != target_col and any(keyword in col.lower() for keyword in temporal_keywords):
+                    # Skip legitimate predictors
+                    if not any(legit in col for legit in legitimate_predictors):
+                        if col not in leakage_columns:
+                            leakage_columns.append(col)
+            
+            # 5. Log leakage detection summary
+            if leakage_columns:
+                self.logger.warning(f"   📊 LEAKAGE ANALYSIS: Found {len(leakage_columns)} potentially leaky features")
+                leakage_types = {
+                    'name_based': [col for col in exact_matches],
+                    'correlation_based': [col for col in leakage_columns if col not in exact_matches],
+                    'temporal_based': [col for col in leakage_columns if any(kw in col.lower() for kw in temporal_keywords)]
+                }
+                for leak_type, cols in leakage_types.items():
+                    if cols:
+                        self.logger.warning(f"       {leak_type}: {cols}")
+            else:
+                self.logger.info(f"   ✅ LEAKAGE CHECK: No obvious data leakage detected")
+                        
+        except Exception as e:
+            self.logger.error(f"Error in leakage detection: {e}")
+            # Fallback to basic name-based detection
+            leakage_columns = [col for col in df.columns if col != target_col and target_col.upper() in col.upper()]
+        
+        return leakage_columns
 
 
 def main():

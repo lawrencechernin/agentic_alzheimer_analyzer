@@ -161,7 +161,11 @@ class AgenticAlzheimerAnalyzer:
                     else:
                         self.logger.warning(f"❌ OpenAI API key not found in environment variable: {api_key_env}")
                 except Exception as e:
-                    self.logger.error(f"❌ Failed to initialize OpenAI client: {e}")
+                    if "unexpected keyword argument 'proxies'" in str(e):
+                        self.logger.error("❌ OpenAI client failed: httpx version conflict detected")
+                        self.logger.error("   Fix: pip install 'httpx<0.28.0' or pip install 'openai<1.51.0'")
+                    else:
+                        self.logger.error(f"❌ Failed to initialize OpenAI client: {e}")
         
         # Initialize Gemini client
         if ai_config.get('gemini', {}).get('enabled', False):
@@ -364,6 +368,17 @@ Analysis cannot proceed without resolving credit/billing issues.
         try:
             # Run discovery agent
             discovery_results = self.discovery_agent.discover_dataset()
+            
+            # Safety check: Exit if no files were analyzed
+            files_analyzed = discovery_results.get('dataset_info', {}).get('files_analyzed', 0)
+            if files_analyzed == 0:
+                self.logger.error("🚨 FATAL: Discovery agent analyzed 0 files - dataset discovery failed!")
+                self.logger.error("💡 Check that data files exist in the configured path")
+                print("\n🚨 FATAL ERROR: Discovery Phase Failed")
+                print("   Discovery agent analyzed 0 files")
+                print("   This usually means data files are missing or not found")
+                print("   Check the 'oasis/' directory contains OASIS CSV files")
+                sys.exit(1)
             
             # Print summary
             self.discovery_agent.print_discovery_summary(discovery_results)
@@ -614,6 +629,13 @@ STATISTICAL FINDINGS:
 - Sample Size: {analysis.get('data_summary', {}).get('baseline_subjects', 0):,} subjects analyzed
 - Effect Sizes: {[corr.get('effect_size', 'unknown') for corr in analysis.get('cross_assessment_correlations', {}).get('significant_correlations', [])[:3]]}
 
+MACHINE LEARNING RESULTS:
+- Advanced CDR Prediction: {f"{analysis.get('advanced_cdr_prediction', {}).get('best_model', {}).get('test_accuracy', 0):.1%} accuracy achieved" if analysis.get('advanced_cdr_prediction', {}).get('best_model') else "No ML analysis performed"}
+- Best Model: {analysis.get('advanced_cdr_prediction', {}).get('best_model', {}).get('name', 'None')}
+- Weighted F1-Score: {f"{analysis.get('advanced_cdr_prediction', {}).get('best_model', {}).get('classification_report', {}).get('weighted avg', {}).get('f1-score', 0):.3f}" if analysis.get('advanced_cdr_prediction', {}).get('best_model') else "N/A"}
+- Models Tested: {len(analysis.get('advanced_cdr_prediction', {}).get('models_tested', []))} algorithms evaluated
+- Key Predictors: {', '.join([f"{feat['feature']}: {feat['importance']:.3f}" for feat in analysis.get('advanced_cdr_prediction', {}).get('feature_importance', [])[:3]])}
+
 LITERATURE CONTEXT:
 - Papers Reviewed: {literature.get('papers_found', {}).get('total_unique_papers', 0)}
 - Novel Findings: {len(literature.get('novelty_analysis', {}).get('novel_findings', []))}
@@ -623,16 +645,32 @@ AI-GENERATED INSIGHTS:
 - Cross-Agent Insights: {synthesis.get('cross_agent_insights', [])}
 - Novel Hypotheses: {synthesis.get('ai_generated_hypotheses', [])}
 
-Please provide a concise, engaging summary that highlights:
-1. The most important discoveries
-2. Clinical significance and implications  
-3. Novel contributions to the field
-4. Future research directions
-5. Practical applications
+Please provide a concise, engaging summary in BULLET POINT FORMAT that highlights:
 
-Write in plain English for researchers, clinicians, and stakeholders. Focus on the "so what" - why these findings matter for Alzheimer's research and patient care.
+## 🔬 KEY FINDINGS
+- Most important discoveries from the analysis
+- Performance metrics (accuracy, F1-score) and what they mean clinically
 
-Format as 3-4 paragraphs, each with a clear focus.
+## 🏥 CLINICAL SIGNIFICANCE  
+- Practical implications for patient care
+- How findings compare to current diagnostic standards
+- Limitations and realistic expectations
+
+## 🚀 RESEARCH CONTRIBUTIONS
+- Novel insights or methodological advances
+- How this extends current knowledge in the field
+
+## 🔮 FUTURE DIRECTIONS
+- Specific next steps for research
+- Technology integration opportunities
+- Areas needing further investigation
+
+## 💡 PRACTICAL APPLICATIONS
+- Actionable recommendations for clinicians
+- Implementation considerations
+- Real-world deployment potential
+
+Format as clear bullet points under each section. Write in plain English for researchers, clinicians, and stakeholders. Focus on the "so what" - why these findings matter for Alzheimer's research and patient care.
 """
             
             # Try Claude first, then OpenAI, then Gemini
@@ -1148,6 +1186,19 @@ Autonomous AI agents analyzed {sample_size:,} subjects to explore relationships 
         # Generate AI-powered summary of key findings
         findings_summary = self._generate_ai_findings_summary()
         
+        # Check if AI summary generation failed - exit if so
+        if ("❌ Failed to generate AI-powered findings summary" in findings_summary or 
+            "❌ No AI clients available" in findings_summary):
+            print("\n" + "="*100)
+            print("🤖 AI-GENERATED FINDINGS SUMMARY")
+            print("="*100)
+            print(findings_summary)
+            print("="*100)
+            print("\n🚨 CRITICAL ERROR: AI analysis failed!")
+            print("The Agentic Alzheimer's Analyzer requires AI providers for final analysis.")
+            print("Please configure API keys and restart the analysis.")
+            exit(1)
+        
         # Save summary to file for persistence
         try:
             with open('outputs/key_findings_summary.md', 'w') as f:
@@ -1199,6 +1250,15 @@ Autonomous AI agents analyzed {sample_size:,} subjects to explore relationships 
         print(f"   Subjects analyzed: {baseline_subjects:,}")
         print(f"   Correlations tested: {correlations_tested}")
         print(f"   Significant correlations: {significant_correlations}")
+        
+        # Add ML performance metrics
+        ml_results = analysis.get('advanced_cdr_prediction', {})
+        if ml_results:
+            best_model = ml_results.get('best_model', {})
+            best_accuracy = best_model.get('test_accuracy', 0) if best_model else 0
+            models_tested = len(ml_results.get('models_tested', []))
+            print(f"   🤖 ML Models tested: {models_tested}")
+            print(f"   🎯 Best ML accuracy: {best_accuracy:.1%} ({best_model.get('name', 'Unknown')})")
         
         print(f"\n📚 LITERATURE PHASE:")
         papers_found = literature.get('papers_found', {}).get('total_unique_papers', 0)

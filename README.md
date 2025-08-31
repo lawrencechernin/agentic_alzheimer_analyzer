@@ -122,6 +122,8 @@ target_variables:
 - **Quality Validation**: Applies clinical research standards (valid ranges, completeness thresholds)
 - **Scale Management**: Handles datasets from hundreds to millions of records through intelligent sampling
 - **Assessment Discovery**: Recognizes cognitive test patterns regardless of specific implementation
+- **Cartesian Join Protection**: Advanced merge safety system prevents data explosion from duplicate records
+- **Intelligent Deduplication**: Automatically removes duplicate subjects using timestamp-based or completeness-based strategies
 
 ### **Expert Knowledge Systems**
 
@@ -172,6 +174,51 @@ New datasets require only **configuration updates**, not code changes:
 - The AI agents handle the rest automatically
 
 This approach ensures the framework benefits from domain expertise while remaining **truly generalizable** to any Alzheimer's research dataset worldwide.
+
+### **Production-Grade Data Safety**
+
+#### **Cartesian Join Protection System**
+Real-world datasets often contain duplicate records, multiple timepoints, and inconsistent subject IDs. Our advanced merge safety system prevents catastrophic data explosions:
+
+```python
+# Early Warning System
+⚠️ CARTESIAN JOIN RISK: Potential 7,397,690,978,650,471,200 record combinations
+💡 Using inner joins to reduce risk, but verify subject ID consistency
+
+# Automatic Risk Detection
+🚨 HIGH DUPLICATION RISK: 72.5% duplication could cause Cartesian joins
+📊 Deduplicating cognitive_data: 181,855 → 50,101 records
+✅ Deduplication by most recent timestamp
+
+# Safe Results
+✅ Final dataset: 38,948 subjects (prevented 32M+ record explosion)
+```
+
+#### **Intelligent Data Processing**
+- **Duplicate Detection**: Identifies and warns about high duplication rates (>50%)
+- **Smart Deduplication**: Uses timestamp-based or data completeness strategies
+- **Growth Monitoring**: Detects suspicious merge growth patterns (>10x = error, >2x = warning)
+- **Graceful Failures**: Clear error messages with diagnostic information for troubleshooting
+- **Memory Protection**: Prevents system crashes from runaway memory usage
+
+#### **Real-World Dataset Handling**
+The system safely processes complex datasets with:
+- **Multiple timepoints per subject** (longitudinal studies)
+- **Duplicate records** (data collection artifacts)  
+- **Inconsistent subject IDs** (data integration challenges)
+- **Large-scale data** (200K+ records, millions of data points)
+- **Missing data patterns** (real-world clinical data)
+
+#### **Validation Before Analysis**
+```
+📊 Pre-merge validation:
+   cognitive_data: 50,101 unique subjects, 181,855 total records
+   ⚠️ 131,754 duplicate subjects (72.5% duplication rate)
+   ecog_data: 52,900 unique subjects, 227,737 total records  
+   ⚠️ 174,837 duplicate subjects (76.8% duplication rate)
+```
+
+This **production-grade robustness** ensures the framework works reliably with messy real-world data that would crash traditional analysis pipelines.
 
 ## 🚀 Quick Start
 
@@ -457,6 +504,39 @@ The framework is designed to be easily extended:
 - Review variable names in your dataset
 - Update `config/data_dictionary.json`
 - Add custom variable mappings
+
+**"Cartesian join detected" / Data explosion**
+```
+🚨 CRITICAL ERROR: Cartesian join detected!
+📊 Data explosion: 181,855 → 32,404,889 records (178.1x growth)
+```
+- **Cause**: Duplicate subject IDs or multiple timepoints per subject
+- **Solution**: System automatically deduplicates, but verify your subject ID column
+- **Prevention**: Check data structure before analysis - look for multiple records per subject
+
+**"HIGH DUPLICATION RISK" warnings**
+```
+⚠️ 131,754 duplicate subjects (72.5% duplication rate)
+🚨 HIGH DUPLICATION RISK: 72.5% duplication could cause Cartesian joins
+```
+- **Normal for longitudinal studies**: Multiple timepoints create "duplicates"
+- **System response**: Automatic deduplication by most recent timestamp
+- **Action needed**: Usually none - system handles this automatically
+- **Manual override**: Set `use_sampling: true` if you need smaller datasets
+
+**"Very few matches found" warnings**
+```
+⚠️ Very few matches found: 1,234 records from 50,000
+💡 This may indicate mismatched subject IDs between datasets
+```
+- **Cause**: Subject ID inconsistencies between datasets (e.g., "SUBJ001" vs "1")
+- **Solution**: Check subject ID column names and formats across your datasets
+- **Common fix**: Standardize subject ID formats before analysis
+
+**Out of memory / System killed**
+- **Modern protection**: Updated system prevents memory explosions
+- **Legacy issues**: Update to latest version with Cartesian join protection
+- **Large datasets**: Enable sampling in `config.yaml`: `use_sampling: true`
 
 ### Support
 

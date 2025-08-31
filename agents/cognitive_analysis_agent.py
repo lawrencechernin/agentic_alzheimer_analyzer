@@ -322,22 +322,51 @@ class CognitiveAnalysisAgent:
         combined = None
         assessment_names = list(self.assessment_data.keys())
         
-        # First, get unique subjects from each dataset to check overlap
+        # First, validate data structure and check for potential Cartesian joins
         subject_counts = {}
+        duplicate_counts = {}
+        
         for assessment_type, df in self.assessment_data.items():
             unique_subjects = df[common_subject_col].nunique()
+            total_records = len(df)
+            duplicate_records = total_records - unique_subjects
+            
             subject_counts[assessment_type] = unique_subjects
-            self.logger.info(f"   {assessment_type}: {unique_subjects:,} unique subjects")
+            duplicate_counts[assessment_type] = duplicate_records
+            
+            self.logger.info(f"   {assessment_type}: {unique_subjects:,} unique subjects, {total_records:,} total records")
+            
+            if duplicate_records > 0:
+                duplication_rate = (duplicate_records / total_records) * 100
+                self.logger.warning(f"      ⚠️ {duplicate_records:,} duplicate subjects ({duplication_rate:.1f}% duplication rate)")
+                
+                if duplication_rate > 50:
+                    self.logger.error(f"      🚨 HIGH DUPLICATION RISK: {duplication_rate:.1f}% duplication could cause Cartesian joins")
         
-        # Merge datasets one by one with progress tracking
+        # Warn about potential Cartesian join risk
+        total_possible_combinations = 1
+        for count in subject_counts.values():
+            total_possible_combinations *= count
+            
+        if total_possible_combinations > 1000000:  # 1M records
+            self.logger.warning(f"   ⚠️ CARTESIAN JOIN RISK: Potential {total_possible_combinations:,} record combinations")
+            self.logger.warning(f"   💡 Using inner joins to reduce risk, but verify subject ID consistency")
+        
+        # Merge datasets one by one with progress tracking and deduplication
         for i, (assessment_type, df) in enumerate(self.assessment_data.items()):
             if combined is None:
-                combined = df.copy()
+                # Start with first dataset, but deduplicate first
+                combined = self._deduplicate_subjects(df, common_subject_col, assessment_type)
                 self.logger.info(f"   Starting with {assessment_type}: {len(combined):,} records")
             else:
                 before_merge = len(combined)
+                
+                # Deduplicate the merging dataset first
+                df_deduplicated = self._deduplicate_subjects(df, common_subject_col, assessment_type)
+                
+                # Perform the merge
                 combined = combined.merge(
-                    df,
+                    df_deduplicated,
                     on=common_subject_col,
                     how='inner',
                     suffixes=('', f'_{assessment_type}')
@@ -345,13 +374,85 @@ class CognitiveAnalysisAgent:
                 after_merge = len(combined)
                 self.logger.info(f"   Merged {assessment_type}: {before_merge:,} → {after_merge:,} records")
                 
-                # Safety check for runaway merges
-                if after_merge > before_merge * 2:
-                    self.logger.warning(f"   ⚠️ Merge increased data size significantly - possible data quality issue")
-                    break
+                # Critical safety checks for Cartesian joins
+                growth_factor = after_merge / before_merge if before_merge > 0 else 1
+                
+                if growth_factor > 10:
+                    self.logger.error(f"   🚨 CRITICAL ERROR: Cartesian join detected!")
+                    self.logger.error(f"   📊 Data explosion: {before_merge:,} → {after_merge:,} records ({growth_factor:.1f}x growth)")
+                    self.logger.error(f"   💡 This indicates duplicate or mismatched subject IDs between datasets")
+                    self.logger.error(f"   🛑 Stopping merge to prevent memory explosion")
+                    
+                    # Log diagnostic information
+                    self.logger.error(f"   🔍 Debug info:")
+                    self.logger.error(f"      - Common subject column: {common_subject_col}")
+                    self.logger.error(f"      - Current dataset unique subjects: {combined[common_subject_col].nunique():,}")
+                    self.logger.error(f"      - Merging dataset unique subjects: {df[common_subject_col].nunique():,}")
+                    self.logger.error(f"      - Expected max records after merge: {combined[common_subject_col].nunique() * df[common_subject_col].nunique():,}")
+                    
+                    raise ValueError(f"Cartesian join detected: {growth_factor:.1f}x data explosion. Check subject ID consistency between datasets.")
+                
+                elif growth_factor > 2:
+                    self.logger.warning(f"   ⚠️ Large merge growth detected: {growth_factor:.1f}x increase")
+                    self.logger.warning(f"   💡 This may indicate data quality issues or multiple records per subject")
+                    
+                elif growth_factor < 0.1:
+                    self.logger.warning(f"   ⚠️ Very few matches found: {after_merge:,} records from {before_merge:,}")
+                    self.logger.warning(f"   💡 This may indicate mismatched subject IDs between datasets")
         
         self.logger.info(f"   📊 Combined dataset: {len(combined)} subjects with data from {len(self.assessment_data)} assessment types")
         return combined
+    
+    def _deduplicate_subjects(self, df: pd.DataFrame, subject_col: str, assessment_type: str) -> pd.DataFrame:
+        """Deduplicate subjects in dataset, keeping most recent or complete record"""
+        original_count = len(df)
+        unique_subjects = df[subject_col].nunique()
+        duplicate_count = original_count - unique_subjects
+        
+        if duplicate_count == 0:
+            return df  # No duplicates
+            
+        self.logger.info(f"      📊 Deduplicating {assessment_type}: {original_count:,} → {unique_subjects:,} records")
+        
+        # Strategy: Keep the most recent record for each subject (if date available)
+        # Otherwise, keep the record with most complete data
+        
+        date_columns = [col for col in df.columns if any(date_term in col.lower() for date_term in ['date', 'time', 'created', 'updated', 'timestamp'])]
+        
+        if date_columns:
+            # Use most recent record based on date
+            date_col = date_columns[0]
+            try:
+                df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+                df_sorted = df.sort_values([subject_col, date_col], ascending=[True, False])
+                deduplicated = df_sorted.groupby(subject_col).first().reset_index()
+                self.logger.info(f"         ✅ Deduplication by most recent {date_col}")
+            except:
+                # Fall back to completeness-based deduplication
+                deduplicated = self._deduplicate_by_completeness(df, subject_col)
+        else:
+            # Use completeness-based deduplication
+            deduplicated = self._deduplicate_by_completeness(df, subject_col)
+            
+        return deduplicated
+    
+    def _deduplicate_by_completeness(self, df: pd.DataFrame, subject_col: str) -> pd.DataFrame:
+        """Keep the record with most complete data for each subject"""
+        # Calculate completeness score for each record
+        df['_completeness_score'] = df.notna().sum(axis=1)
+        
+        # Sort by subject and completeness score (highest first)
+        df_sorted = df.sort_values([subject_col, '_completeness_score'], ascending=[True, False])
+        
+        # Keep first record for each subject (most complete)
+        deduplicated = df_sorted.groupby(subject_col).first().reset_index()
+        
+        # Remove the temporary completeness score column
+        if '_completeness_score' in deduplicated.columns:
+            deduplicated = deduplicated.drop('_completeness_score', axis=1)
+            
+        self.logger.info(f"         ✅ Deduplication by data completeness")
+        return deduplicated
     
     def _identify_assessment_types(self) -> List[str]:
         """Identify what types of assessments are available in the data"""

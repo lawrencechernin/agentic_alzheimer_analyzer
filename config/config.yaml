@@ -1,0 +1,188 @@
+# Agentic Alzheimer's Analyzer Configuration
+# ==========================================
+
+# Dataset Configuration
+dataset:
+  name: "BHR_2022_ECOG_MemTrax_Validation"
+  description: "BHR 2022 ECOG-MemTrax correlation analysis for cognitive decline assessment validation"
+  
+  # Data sources (can be paths, URLs, or other data sources)
+  data_sources:
+    - path: "../bhr.0/BHR-ALL-EXT_Mem_2022/"
+      type: "local_directory"
+      description: "BHR 2022 Memory Extension study data"
+    # Example of multiple data sources for future experiments:
+    # - path: "../additional_cohort/data/"
+    #   type: "local_directory" 
+    #   description: "Additional validation cohort"
+    # - url: "https://api.example.com/alzheimer-data"
+    #   type: "api_endpoint"
+    #   description: "External validation dataset"
+    # - path: "s3://bucket/alzheimer-data/"
+    #   type: "cloud_storage"
+    #   description: "Cloud-hosted longitudinal data"
+  
+  # File patterns to search for
+  file_patterns:
+    cognitive_data:
+      - "*MemTrax*.csv"
+      - "*cognitive*.csv"
+      - "*memtrax*.csv"
+    
+    ecog_data:
+      - "*ECOG*.csv"
+      - "*EverydayCognition*.csv"
+      - "*ecog*.csv"
+    
+    demographic_data:
+      - "*Demographics*.csv"
+      - "*demo*.csv"
+      - "*participants*.csv"
+    
+    medical_data:
+      - "*Medical*.csv"
+      - "*medical*.csv"
+      - "*diagnosis*.csv"
+
+# Research Goals and Experiment Configuration
+experiment:
+  name: "BHR_2022_ECOG_MemTrax_Validation_Study"
+  dataset: "BHR_2022_ECOG_MemTrax_Validation"  # Links to dataset.name above
+  
+  primary_objectives:
+    - "Compare ECOG self-report vs informant ratings"
+    - "Correlate ECOG scores with MemTrax performance"
+    - "Identify discrepancy patterns between self and informant reports"
+    - "Find novel biomarker candidates based on multi-modal assessment"
+  
+  secondary_analyses:
+    - "Age-stratified correlation patterns"
+    - "Gender differences in self-awareness"
+    - "Education effects on reporting accuracy"
+    - "Longitudinal changes in self-awareness"
+  
+  # Specific variables of interest (will be auto-mapped from data dictionary)
+  target_variables:
+    ecog_self: ["self_report", "self_ecog", "ecog_self"]
+    ecog_informant: ["informant_report", "informant_ecog", "ecog_informant"]
+    memtrax_rt: ["reaction_time", "response_time", "rt", "CorrectResponsesRT"]
+    memtrax_accuracy: ["accuracy", "percent_correct", "CorrectPCT"]
+    demographics: ["age", "education", "gender"]
+
+# AI Configuration
+ai_providers:
+  # Provider preferences (in order of preference)
+  preference_order: ["claude", "gemini", "openai"]
+  
+  claude:
+    enabled: true
+    api_key_env: "ANTHROPIC_API_KEY"  # Environment variable name
+    default_model: "claude-3-sonnet-20240229"
+    fallback_model: "claude-3-haiku-20240307"
+    max_tokens: 4000
+    
+  openai:
+    enabled: true
+    api_key_env: "OPENAI_API_KEY"
+    default_model: "gpt-4"
+    fallback_model: "gpt-3.5-turbo"
+    max_tokens: 4000
+    
+  gemini:
+    enabled: true
+    api_key_env: "GEMINI_API_KEY"
+    default_model: "gemini-pro"
+    max_tokens: 4000
+
+# Analysis Configuration
+analysis:
+  # Data quality thresholds
+  quality_thresholds:
+    min_sample_size: 100
+    max_missing_percent: 50
+    rt_valid_range: [0.3, 3.0]  # Valid reaction time range in seconds
+    accuracy_valid_range: [0.0, 1.0]  # Valid accuracy range
+  
+  # Statistical analysis parameters
+  statistical_settings:
+    significance_level: 0.05
+    effect_size_thresholds:
+      small: 0.2
+      medium: 0.5
+      large: 0.8
+    correlation_method: "pearson"  # pearson, spearman, kendall
+  
+  # Visualization preferences
+  visualization:
+    style: "publication"  # publication, presentation, web
+    color_palette: "colorblind_friendly"
+    figure_size: [12, 8]
+    dpi: 300
+    save_formats: ["png", "pdf"]
+
+# Literature Research Configuration
+literature_research:
+  enabled: true
+  max_papers_per_query: 20
+  search_terms:
+    - "ECOG self informant correlation"
+    - "everyday cognition questionnaire validity"
+    - "self-awareness cognitive decline"
+    - "anosognosia Alzheimer disease"
+    - "digital cognitive assessment validation"
+  
+  databases: ["pubmed", "semantic_scholar"]  # Available: pubmed, semantic_scholar, arxiv
+  
+  # Novelty detection thresholds
+  novelty_thresholds:
+    correlation_difference: 0.1  # Flag if our correlation differs by >0.1 from literature
+    effect_size_difference: 0.2   # Flag if effect size differs significantly
+
+# Output Configuration
+outputs:
+  base_directory: "./outputs/"
+  
+  # Report generation settings
+  reports:
+    generate_grant_section: true
+    generate_manuscript_draft: true
+    generate_presentation: true
+    include_raw_data_summary: false  # For privacy
+  
+  # Visualization settings  
+  visualizations:
+    create_dashboard: true
+    create_individual_plots: true
+    interactive_plots: true
+  
+  # File naming convention
+  file_naming:
+    timestamp: true
+    experiment_name: true
+    version_control: true
+
+# Safety and Monitoring
+safety:
+  # Automatic stops
+  max_analysis_time_hours: 6
+  max_files_to_process: 50
+  
+  # Privacy protection
+  anonymize_outputs: true
+  exclude_identifiers: true
+  
+  # Validation checks
+  validate_results: true
+  cross_check_findings: true
+  
+# Logging Configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  log_file: "./outputs/analysis.log"
+  console_output: true
+  
+  # What to log
+  log_token_usage: true
+  log_analysis_steps: true
+  log_data_access: false  # For privacy
+  log_ai_interactions: true

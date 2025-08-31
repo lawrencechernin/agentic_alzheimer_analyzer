@@ -1,0 +1,26 @@
+{
+  "claude": {
+    "daily_token_limit": 1000000,
+    "monthly_token_limit": 25000000,
+    "daily_cost_limit": 50.0,
+    "monthly_cost_limit": 1000.0,
+    "requests_per_minute": 60,
+    "enabled": true
+  },
+  "openai": {
+    "daily_token_limit": 500000,
+    "monthly_token_limit": 10000000,
+    "daily_cost_limit": 100.0,
+    "monthly_cost_limit": 2000.0,
+    "requests_per_minute": 60,
+    "enabled": true
+  },
+  "gemini": {
+    "daily_token_limit": 2000000,
+    "monthly_token_limit": 50000000,
+    "daily_cost_limit": 25.0,
+    "monthly_cost_limit": 500.0,
+    "requests_per_minute": 60,
+    "enabled": true
+  }
+}

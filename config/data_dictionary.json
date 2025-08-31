@@ -1,0 +1,326 @@
+{
+  "variable_mappings": {
+    "cognitive_assessments": {
+      "memtrax_reaction_time": {
+        "possible_names": [
+          "CorrectResponsesRT", "ResponseTime", "reaction_time", "rt", 
+          "response_time_ms", "RT_correct", "correct_rt"
+        ],
+        "description": "Reaction time for correct responses in cognitive task",
+        "units": ["seconds", "milliseconds"],
+        "valid_range": [0.3, 3.0],
+        "clinical_significance": "Slower reaction times indicate cognitive decline",
+        "transformation_notes": "Convert milliseconds to seconds if needed",
+        "related_biomarkers": ["amyloid", "tau", "neurodegeneration"]
+      },
+      
+      "memtrax_accuracy": {
+        "possible_names": [
+          "CorrectPCT", "PercentCorrect", "accuracy", "correct_percent",
+          "percent_correct", "accuracy_rate", "correct_responses"
+        ],
+        "description": "Percentage of correct responses in cognitive task",
+        "units": ["percentage", "proportion"],
+        "valid_range": [0.0, 1.0],
+        "clinical_significance": "Lower accuracy indicates cognitive impairment",
+        "transformation_notes": "Convert percentage to proportion if needed (divide by 100)"
+      },
+      
+      "memtrax_total_responses": {
+        "possible_names": [
+          "TotalResponsesN", "total_responses", "n_trials", "trial_count"
+        ],
+        "description": "Total number of responses in the task",
+        "valid_range": [10, 200],
+        "clinical_significance": "Low response count may indicate engagement issues"
+      }
+    },
+    
+    "ecog_assessments": {
+      "ecog_self_total": {
+        "possible_names": [
+          "ecog_self_total", "self_report_total", "ecog_self_sum",
+          "self_ecog_total", "ecog_participant"
+        ],
+        "description": "Total ECOG score from self-report",
+        "scale_range": [39, 156],
+        "clinical_significance": "Higher scores indicate more self-reported cognitive problems",
+        "calculation": "Sum of all ECOG self-report items",
+        "missing_value_handling": "Require at least 80% completion for valid total"
+      },
+      
+      "ecog_informant_total": {
+        "possible_names": [
+          "ecog_informant_total", "informant_report_total", "ecog_informant_sum",
+          "informant_ecog_total", "ecog_study_partner", "ecog_caregiver"
+        ],
+        "description": "Total ECOG score from informant report",
+        "scale_range": [39, 156],
+        "clinical_significance": "Higher scores indicate more informant-reported cognitive problems",
+        "calculation": "Sum of all ECOG informant items"
+      },
+      
+      "ecog_memory_self": {
+        "possible_names": [
+          "ecog_memory_self", "memory_self", "ecog_mem_self"
+        ],
+        "description": "ECOG memory domain self-report",
+        "domain": "memory",
+        "items_count": 8,
+        "scale_range": [8, 32]
+      },
+      
+      "ecog_memory_informant": {
+        "possible_names": [
+          "ecog_memory_informant", "memory_informant", "ecog_mem_informant"
+        ],
+        "description": "ECOG memory domain informant report",
+        "domain": "memory", 
+        "items_count": 8,
+        "scale_range": [8, 32]
+      },
+      
+      "ecog_language_self": {
+        "possible_names": [
+          "ecog_language_self", "language_self", "ecog_lang_self"
+        ],
+        "description": "ECOG language domain self-report",
+        "domain": "language",
+        "items_count": 9,
+        "scale_range": [9, 36]
+      },
+      
+      "ecog_executive_self": {
+        "possible_names": [
+          "ecog_executive_self", "executive_self", "ecog_exec_self"
+        ],
+        "description": "ECOG executive function domain self-report",
+        "domain": "executive",
+        "items_count": 12,
+        "scale_range": [12, 48]
+      }
+    },
+    
+    "demographics": {
+      "age": {
+        "possible_names": [
+          "age", "Age", "AGE", "age_at_visit", "current_age", "baseline_age"
+        ],
+        "description": "Participant age in years",
+        "valid_range": [18, 110],
+        "clinical_significance": "Age is primary risk factor for cognitive decline"
+      },
+      
+      "education": {
+        "possible_names": [
+          "education", "Education", "years_education", "educ", "school_years",
+          "YearsEducationUS_Converted", "education_years"
+        ],
+        "description": "Years of formal education",
+        "valid_range": [0, 25],
+        "clinical_significance": "Higher education associated with cognitive reserve"
+      },
+      
+      "gender": {
+        "possible_names": [
+          "gender", "Gender", "sex", "Sex", "GENDER"
+        ],
+        "description": "Participant gender",
+        "valid_values": ["M", "F", "Male", "Female", "0", "1"],
+        "encoding": {"M": "Male", "F": "Female", "0": "Female", "1": "Male"},
+        "clinical_significance": "Gender differences in cognitive aging patterns"
+      },
+      
+      "race_ethnicity": {
+        "possible_names": [
+          "race", "ethnicity", "race_ethnicity", "Race", "Ethnicity"
+        ],
+        "description": "Race/ethnicity classification",
+        "clinical_significance": "Important for understanding health disparities"
+      }
+    },
+    
+    "medical_history": {
+      "alzheimer_diagnosis": {
+        "possible_names": [
+          "alzheimer", "alzheimer_disease", "AD", "dementia_alzheimer",
+          "QID1-13", "alzheimer_diagnosis"
+        ],
+        "description": "Alzheimer's disease diagnosis",
+        "encoding": {"1.0": "Yes", "2.0": "No", "Yes": true, "No": false},
+        "clinical_significance": "Primary outcome for AD research"
+      },
+      
+      "mci_diagnosis": {
+        "possible_names": [
+          "mci", "mild_cognitive_impairment", "MCI", "cognitive_impairment",
+          "QID1-15", "mci_diagnosis"
+        ],
+        "description": "Mild Cognitive Impairment diagnosis", 
+        "encoding": {"1.0": "Yes", "2.0": "No"},
+        "clinical_significance": "Prodromal stage of dementia"
+      },
+      
+      "memory_problems": {
+        "possible_names": [
+          "memory_problems", "memory_complaint", "subjective_memory",
+          "QID1-12", "memory_concerns"
+        ],
+        "description": "Self-reported memory problems",
+        "encoding": {"1.0": "Yes", "2.0": "No"},
+        "clinical_significance": "Early indicator of cognitive decline"
+      },
+      
+      "depression": {
+        "possible_names": [
+          "depression", "depressed", "depression_history", "QID1-21"
+        ],
+        "description": "Depression diagnosis or history",
+        "encoding": {"1.0": "Yes", "2.0": "No"},
+        "clinical_significance": "Can affect cognitive performance and self-awareness"
+      }
+    },
+    
+    "longitudinal_variables": {
+      "timepoint": {
+        "possible_names": [
+          "TimepointCode", "timepoint", "visit", "time_point", "wave"
+        ],
+        "description": "Study timepoint identifier",
+        "baseline_values": ["m00", "baseline", "0", "1", "visit_1"],
+        "clinical_significance": "Essential for longitudinal analysis"
+      },
+      
+      "days_from_baseline": {
+        "possible_names": [
+          "DaysAfterBaseline", "days_from_baseline", "time_since_baseline",
+          "follow_up_days"
+        ],
+        "description": "Days since baseline assessment",
+        "valid_range": [0, 3650],
+        "clinical_significance": "Time variable for trajectory modeling"
+      }
+    },
+    
+    "identifiers": {
+      "subject_id": {
+        "possible_names": [
+          "SubjectCode", "subject_id", "participant_id", "ID", "subject_code",
+          "ParticipantID", "Code"
+        ],
+        "description": "Unique subject identifier",
+        "privacy_level": "high",
+        "handling": "anonymize_in_outputs"
+      },
+      
+      "study_code": {
+        "possible_names": [
+          "StudyCode", "study_id", "study", "cohort"
+        ],
+        "description": "Study or cohort identifier",
+        "privacy_level": "low"
+      }
+    }
+  },
+  
+  "data_quality_rules": {
+    "reaction_time_validation": {
+      "description": "Validate reaction time measurements",
+      "rules": [
+        {"field": "reaction_time", "min": 0.3, "max": 3.0, "unit": "seconds"},
+        {"field": "reaction_time", "min": 300, "max": 3000, "unit": "milliseconds"}
+      ],
+      "action_if_invalid": "flag_for_review"
+    },
+    
+    "ecog_completeness": {
+      "description": "Ensure ECOG questionnaires are sufficiently complete",
+      "rules": [
+        {"field": "ecog_total", "min_items_completed": 31},
+        {"field": "ecog_domain", "min_items_completed": "80_percent"}
+      ],
+      "action_if_invalid": "exclude_from_total_score"
+    },
+    
+    "demographic_consistency": {
+      "description": "Check demographic variable consistency",
+      "rules": [
+        {"field": "age", "min": 18, "max": 110},
+        {"field": "education", "min": 0, "max": 25},
+        {"field": "gender", "valid_values": ["M", "F", "Male", "Female", "0", "1"]}
+      ],
+      "action_if_invalid": "flag_for_manual_review"
+    }
+  },
+  
+  "derived_variables": {
+    "ecog_discrepancy": {
+      "description": "Difference between informant and self ECOG scores",
+      "formula": "ecog_informant_total - ecog_self_total",
+      "interpretation": {
+        "positive": "Informant reports more problems than participant",
+        "negative": "Participant reports more problems than informant",
+        "zero": "Agreement between informant and participant"
+      },
+      "clinical_significance": "Large positive discrepancy may indicate anosognosia"
+    },
+    
+    "cognitive_efficiency": {
+      "description": "Combined measure of speed and accuracy",
+      "formula": "accuracy / reaction_time",
+      "interpretation": "Higher values indicate better cognitive efficiency",
+      "units": "correct_responses_per_second"
+    },
+    
+    "age_adjusted_rt": {
+      "description": "Age-adjusted reaction time",
+      "formula": "reaction_time - (age_specific_normative_rt)",
+      "clinical_significance": "Removes age-related slowing from RT measures"
+    }
+  },
+  
+  "standard_transformations": {
+    "milliseconds_to_seconds": {
+      "description": "Convert millisecond reaction times to seconds",
+      "formula": "value / 1000",
+      "apply_when": "value > 10"
+    },
+    
+    "percentage_to_proportion": {
+      "description": "Convert percentage accuracy to proportion",
+      "formula": "value / 100",
+      "apply_when": "value > 1.0"
+    },
+    
+    "gender_standardization": {
+      "description": "Standardize gender coding",
+      "mapping": {
+        "M": "Male", "F": "Female", "0": "Female", "1": "Male",
+        "male": "Male", "female": "Female"
+      }
+    }
+  },
+  
+  "clinical_cutoffs": {
+    "ecog_impairment": {
+      "description": "ECOG score cutoffs for impairment classification",
+      "cutoffs": {
+        "normal": {"self": "<= 2.0", "informant": "<= 2.0"},
+        "mild_impairment": {"self": "2.0-2.5", "informant": "2.0-2.5"}, 
+        "moderate_impairment": {"self": "2.5-3.0", "informant": "2.5-3.0"},
+        "severe_impairment": {"self": "> 3.0", "informant": "> 3.0"}
+      },
+      "note": "Based on mean item scores (total/39)"
+    },
+    
+    "rt_impairment": {
+      "description": "Reaction time cutoffs for impairment (age-adjusted)",
+      "cutoffs": {
+        "age_50_60": {"normal": "< 0.8s", "impaired": "> 1.2s"},
+        "age_60_70": {"normal": "< 0.9s", "impaired": "> 1.4s"},
+        "age_70_80": {"normal": "< 1.0s", "impaired": "> 1.6s"},
+        "age_80_plus": {"normal": "< 1.1s", "impaired": "> 1.8s"}
+      }
+    }
+  }
+}

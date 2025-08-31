@@ -94,8 +94,18 @@ ai_providers:
     default_model: "gemini-pro"
     max_tokens: 4000
 
+# Discovery Configuration  
+discovery:
+  sample_size: 1000        # Number of rows to sample for initial discovery
+  full_analysis: false     # Set to true to analyze complete datasets (slower but comprehensive)
+  max_files_to_analyze: 20 # Limit files analyzed for performance
+
 # Analysis Configuration
 analysis:
+  # Data sampling for large datasets
+  use_sampling: true          # Sample data for analysis to prevent memory issues
+  analysis_sample_size: 5000  # Max rows per dataset to analyze (prevents Cartesian explosion)
+  
   # Data quality thresholds
   quality_thresholds:
     min_sample_size: 100

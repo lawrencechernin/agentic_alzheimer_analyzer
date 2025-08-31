@@ -194,13 +194,17 @@ class CognitiveAnalysisAgent:
             'preprocessing_steps': []
         }
         
+        # Reload discovery results (they may have been updated since initialization)
+        self.discovery_results = self._load_discovery_results()
+        
         # Get discovered files from discovery results
         discovered_files = self.discovery_results.get('files_discovered', {})
+        files_by_type = discovered_files.get('files_by_type', {})
         file_patterns = self.config.get('dataset', {}).get('file_patterns', {})
         
         # Load each type of assessment data
         for assessment_type, patterns in file_patterns.items():
-            matching_files = discovered_files.get(assessment_type, [])
+            matching_files = files_by_type.get(assessment_type, [])
             if matching_files:
                 self.logger.info(f"   Loading {assessment_type} data from {len(matching_files)} files")
                 assessment_df = self._load_assessment_files(matching_files, assessment_type)
@@ -237,10 +241,20 @@ class CognitiveAnalysisAgent:
         """Load files for a specific assessment type"""
         dataframes = []
         
+        # Check if sampling is enabled
+        use_sampling = self.config.get('analysis', {}).get('use_sampling', False)
+        sample_size = self.config.get('analysis', {}).get('analysis_sample_size', 5000)
+        
         for file_path in file_paths:
             try:
-                df = pd.read_csv(file_path, low_memory=False)
-                self.logger.info(f"     {assessment_type} file: {os.path.basename(file_path)} - {len(df)} records")
+                if use_sampling:
+                    # Sample data to prevent memory explosion
+                    df = pd.read_csv(file_path, nrows=sample_size, low_memory=False)
+                    total_rows = sum(1 for _ in open(file_path)) - 1  # Get total count
+                    self.logger.info(f"     {assessment_type} file: {os.path.basename(file_path)} - {len(df)} of {total_rows:,} records (sampled)")
+                else:
+                    df = pd.read_csv(file_path, low_memory=False)
+                    self.logger.info(f"     {assessment_type} file: {os.path.basename(file_path)} - {len(df)} records")
                 dataframes.append(df)
             except Exception as e:
                 self.logger.warning(f"Could not load {file_path}: {e}")
@@ -273,20 +287,37 @@ class CognitiveAnalysisAgent:
         if not common_subject_col:
             raise ValueError("Could not find common subject identifier across datasets")
         
-        # Merge all datasets
+        # Merge all datasets efficiently
         combined = None
         assessment_names = list(self.assessment_data.keys())
         
+        # First, get unique subjects from each dataset to check overlap
+        subject_counts = {}
+        for assessment_type, df in self.assessment_data.items():
+            unique_subjects = df[common_subject_col].nunique()
+            subject_counts[assessment_type] = unique_subjects
+            self.logger.info(f"   {assessment_type}: {unique_subjects:,} unique subjects")
+        
+        # Merge datasets one by one with progress tracking
         for i, (assessment_type, df) in enumerate(self.assessment_data.items()):
             if combined is None:
                 combined = df.copy()
+                self.logger.info(f"   Starting with {assessment_type}: {len(combined):,} records")
             else:
+                before_merge = len(combined)
                 combined = combined.merge(
                     df,
                     on=common_subject_col,
                     how='inner',
                     suffixes=('', f'_{assessment_type}')
                 )
+                after_merge = len(combined)
+                self.logger.info(f"   Merged {assessment_type}: {before_merge:,} → {after_merge:,} records")
+                
+                # Safety check for runaway merges
+                if after_merge > before_merge * 2:
+                    self.logger.warning(f"   ⚠️ Merge increased data size significantly - possible data quality issue")
+                    break
         
         self.logger.info(f"   📊 Combined dataset: {len(combined)} subjects with data from {len(self.assessment_data)} assessment types")
         return combined

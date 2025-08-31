@@ -140,16 +140,18 @@ class DataDiscoveryAgent:
             'file_details': {}
         }
         
-        # Get data paths from configuration
-        data_paths = self.config.get('dataset', {}).get('data_paths', ['./'])
+        # Get data sources from configuration
+        data_sources = self.config.get('dataset', {}).get('data_sources', [{'path': './', 'type': 'local_directory'}])
         file_patterns = self.config.get('dataset', {}).get('file_patterns', {})
         
         all_files = []
         
-        # Search each data path
-        for data_path in data_paths:
+        # Search each data source
+        for data_source in data_sources:
+            data_path = data_source.get('path', './')
             if os.path.exists(data_path):
-                self.logger.info(f"   Searching: {data_path}")
+                source_desc = data_source.get('description', data_source.get('type', 'data source'))
+                self.logger.info(f"   Searching: {data_path} ({source_desc})")
                 
                 # Find all relevant files
                 for root, dirs, files in os.walk(data_path):
@@ -157,6 +159,9 @@ class DataDiscoveryAgent:
                         if file.endswith(('.csv', '.xlsx', '.json', '.parquet')):
                             file_path = os.path.join(root, file)
                             all_files.append(file_path)
+            else:
+                source_desc = data_source.get('description', data_source.get('type', 'data source'))
+                self.logger.warning(f"   ⚠️ Data path not found: {data_path} ({source_desc})")
         
         files_info['total_files_found'] = len(all_files)
         self.logger.info(f"   📁 Found {len(all_files)} data files")
@@ -218,11 +223,27 @@ class DataDiscoveryAgent:
             try:
                 self.logger.info(f"   📊 Analyzing: {os.path.basename(file_path)}")
                 
-                # Read file sample
+                # Read file sample for discovery (configurable)
+                sample_size = self.config.get('discovery', {}).get('sample_size', 1000)
+                full_analysis = self.config.get('discovery', {}).get('full_analysis', False)
+                
                 if file_path.endswith('.csv'):
-                    df_sample = pd.read_csv(file_path, nrows=1000, low_memory=False)  # Sample first 1000 rows
+                    if full_analysis:
+                        df_sample = pd.read_csv(file_path, low_memory=False)
+                    else:
+                        # Get total row count first
+                        try:
+                            total_rows = sum(1 for _ in open(file_path)) - 1  # Subtract header
+                            df_sample = pd.read_csv(file_path, nrows=sample_size, low_memory=False)
+                            if total_rows > sample_size:
+                                self.logger.info(f"      ℹ️ Sampling {sample_size:,} of {total_rows:,} total rows. Set discovery.full_analysis=true for complete analysis.")
+                        except:
+                            df_sample = pd.read_csv(file_path, nrows=sample_size, low_memory=False)
                 elif file_path.endswith('.xlsx'):
-                    df_sample = pd.read_excel(file_path, nrows=1000)
+                    if full_analysis:
+                        df_sample = pd.read_excel(file_path)
+                    else:
+                        df_sample = pd.read_excel(file_path, nrows=sample_size)
                 else:
                     continue
                 
@@ -504,6 +525,15 @@ class DataDiscoveryAgent:
             return float(obj)
         elif pd.isna(obj):
             return None
+        elif hasattr(obj, 'dtype'):
+            # Handle pandas dtypes and numpy dtypes
+            return str(obj)
+        elif str(type(obj)).startswith('<class \'numpy.'):
+            # Handle any numpy type
+            try:
+                return obj.item()
+            except:
+                return str(obj)
         else:
             return obj
     

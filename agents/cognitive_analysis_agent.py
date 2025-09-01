@@ -62,6 +62,14 @@ try:
 except Exception:
     STATSMODELS_AVAILABLE = False
 
+# Dataset adapters
+try:
+    sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'core'))
+    from datasets import get_adapter
+    ADAPTERS_AVAILABLE = True
+except Exception:
+    ADAPTERS_AVAILABLE = False
+
 class CognitiveAnalysisAgent:
     """
     Generalizable analysis agent for cognitive assessment correlation studies
@@ -232,7 +240,7 @@ class CognitiveAnalysisAgent:
             return analysis_results
     
     def _load_and_preprocess_data(self) -> Dict[str, Any]:
-        """Load and preprocess cognitive assessment data using BENCHMARK APPROACH"""
+        """Load and preprocess data via adapter if available; fallback to legacy OASIS flow."""
         data_summary = {
             'assessments_loaded': [],
             'total_subjects': 0,
@@ -240,55 +248,53 @@ class CognitiveAnalysisAgent:
             'preprocessing_steps': []
         }
         
+        # Try dataset adapter first
+        if ADAPTERS_AVAILABLE:
+            try:
+                adapter = get_adapter(self.config)
+                if adapter and adapter.is_available():
+                    self.logger.info(f"   🔌 Using dataset adapter: {adapter.__class__.__name__}")
+                    self.combined_data = adapter.load_combined()
+                    summary = adapter.data_summary()
+                    data_summary.update(summary)
+                    # Done
+                    return data_summary
+                else:
+                    self.logger.info("   ℹ️ No suitable dataset adapter available; falling back to legacy loader")
+            except Exception as e:
+                self.logger.warning(f"   ⚠️ Adapter loading failed: {e}; using legacy loader")
+        
+        # Legacy OASIS loader (existing benchmark approach)
         try:
-            # BENCHMARK FIX: Load OASIS data directly using our proven approach
             data_path = "./training_data/oasis/"
-            
-            # Load both datasets
             cross_df = pd.read_csv(f"{data_path}oasis_cross-sectional.csv")
             long_df = pd.read_csv(f"{data_path}oasis_longitudinal.csv")
             
             self.logger.info(f"   Loaded cross-sectional: {cross_df.shape}")
             self.logger.info(f"   Loaded longitudinal: {long_df.shape}")
             
-            # Harmonize column names between datasets
-            cross_df = cross_df.rename(columns={
-                'ID': 'Subject_ID',
-                'M/F': 'Gender', 
-                'Educ': 'EDUC'
-            })
+            cross_df = cross_df.rename(columns={'ID': 'Subject_ID', 'M/F': 'Gender', 'Educ': 'EDUC'})
+            long_df = long_df.rename(columns={'Subject ID': 'Subject_ID', 'M/F': 'Gender'})
             
-            long_df = long_df.rename(columns={
-                'Subject ID': 'Subject_ID',
-                'M/F': 'Gender'
-            })
-            
-            # Get common columns and combine (BENCHMARK APPROACH)
             common_cols = list(set(cross_df.columns) & set(long_df.columns))
             self.logger.info(f"   Common columns: {len(common_cols)}")
             
-            # Select common columns and combine
             cross_common = cross_df[common_cols]
             long_common = long_df[common_cols]
             
             self.combined_data = pd.concat([cross_common, long_common], ignore_index=True)
             self.logger.info(f"   🔗 Combined dataset: {self.combined_data.shape}")
             
-            # Apply benchmark data cleaning (preserve maximum subjects)
             initial_subjects = len(self.combined_data)
             
-            # Drop rows missing CDR (target variable)
             if 'CDR' in self.combined_data.columns:
                 before_cdr = len(self.combined_data)
                 self.combined_data = self.combined_data.dropna(subset=['CDR'])
                 after_cdr = len(self.combined_data)
                 self.logger.info(f"   🎯 Dropped {before_cdr - after_cdr} rows missing CDR: {after_cdr}/{before_cdr} subjects retained")
-                
-                # Show CDR distribution
                 cdr_distribution = self.combined_data['CDR'].value_counts().sort_index()
                 self.logger.info(f"   📈 CDR distribution: {dict(cdr_distribution)}")
             
-            # Apply gentle imputation for other missing values
             if 'SES' in self.combined_data.columns and self.combined_data['SES'].isnull().any():
                 from sklearn.impute import SimpleImputer
                 mode_imputer = SimpleImputer(strategy='most_frequent')
@@ -301,12 +307,10 @@ class CognitiveAnalysisAgent:
                 self.combined_data[['MMSE']] = median_imputer.fit_transform(self.combined_data[['MMSE']])
                 self.logger.info("   🔧 Imputed MMSE missing values using median")
             
-            # Set both assessment types as loaded (since we loaded both files)
             data_summary['assessments_loaded'] = [
                 {'type': 'brain_imaging_data', 'files': 2, 'records': len(self.combined_data)},
                 {'type': 'clinical_data', 'files': 2, 'records': len(self.combined_data)}
             ]
-            
             data_summary['total_subjects'] = len(self.combined_data)
             data_summary['baseline_subjects'] = len(self.combined_data)
             data_summary['preprocessing_steps'] = [
@@ -320,7 +324,6 @@ class CognitiveAnalysisAgent:
             
         except Exception as e:
             self.logger.error(f"   ❌ Benchmark data loading failed: {e}")
-            # Fallback to empty dataset
             self.combined_data = pd.DataFrame()
             data_summary['error'] = str(e)
         

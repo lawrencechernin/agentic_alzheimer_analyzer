@@ -87,6 +87,13 @@ This framework automatically discovers and analyzes relationships across any com
    - **Expert Synthesis**: Generates research-quality insights by combining all agent findings
    - **Human-Readable Summaries**: AI translates complex findings into clear clinical implications
 
+### **Dataset Adapters (Pluggable Loaders)**
+- Adapters live in `core/datasets/` and encapsulate dataset-specific loading/cleaning.
+- Current adapters:
+  - `OasisAdapter` for OASIS cross-sectional/longitudinal (`training_data/oasis/`)
+  - `BrfssAdapter` for BRFSS surveillance CSVs (`dataset.file_patterns`)
+- The agent automatically selects an adapter based on `config.dataset.name` and on-disk availability, with a safe fallback to legacy OASIS loading.
+
 ### **Generalization Principles: Learning Methods, Not Data**
 
 The framework incorporates domain expertise through **methodological principles** rather than dataset-specific hardcoding:

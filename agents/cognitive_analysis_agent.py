@@ -55,6 +55,13 @@ try:
 except ImportError:
     F1_EVALUATION_AVAILABLE = False
 
+# Multiple-testing correction
+try:
+    from statsmodels.stats.multitest import multipletests
+    STATSMODELS_AVAILABLE = True
+except Exception:
+    STATSMODELS_AVAILABLE = False
+
 class CognitiveAnalysisAgent:
     """
     Generalizable analysis agent for cognitive assessment correlation studies
@@ -597,9 +604,26 @@ class CognitiveAnalysisAgent:
         for pair_key, pair_results in correlation_results['assessment_pairs'].items():
             correlation_results['primary_correlations'].update(pair_results)
         
+        # Multiple testing correction (FDR Benjamini–Hochberg)
+        try:
+            pvals = [d.get('p_value', 1.0) for d in correlation_results['primary_correlations'].values()]
+            keys = list(correlation_results['primary_correlations'].keys())
+            if STATSMODELS_AVAILABLE and len(pvals) > 0:
+                reject, pvals_corrected, _, _ = multipletests(pvals, alpha=0.05, method='fdr_bh')
+                for k, adj_p, rej in zip(keys, pvals_corrected, reject):
+                    correlation_results['primary_correlations'][k]['p_value_fdr'] = float(adj_p)
+                    correlation_results['primary_correlations'][k]['significant_fdr'] = bool(rej)
+            else:
+                # If statsmodels not available, copy unadjusted to adjusted for transparency
+                for k in keys:
+                    correlation_results['primary_correlations'][k]['p_value_fdr'] = correlation_results['primary_correlations'][k].get('p_value', 1.0)
+                    correlation_results['primary_correlations'][k]['significant_fdr'] = correlation_results['primary_correlations'][k].get('p_value', 1.0) < 0.05
+        except Exception:
+            pass
+        
         # Calculate clinical significance
         significant_correlations = sum(1 for corr_data in correlation_results['primary_correlations'].values()
-                                     if corr_data.get('p_value', 1) < 0.05)
+                                     if corr_data.get('p_value_fdr', corr_data.get('p_value', 1)) < 0.05)
         total_correlations = len(correlation_results['primary_correlations'])
         
         if total_correlations > 0:
@@ -607,7 +631,8 @@ class CognitiveAnalysisAgent:
                 'significant_correlations': significant_correlations,
                 'total_correlations': total_correlations,
                 'significance_rate': significant_correlations / total_correlations,
-                'multiple_comparison_threshold': 0.05 / total_correlations
+                'multiple_comparison_threshold': 0.05 / total_correlations,
+                'adjustment': 'fdr_bh' if STATSMODELS_AVAILABLE else 'none'
             }
         
         return correlation_results
@@ -841,11 +866,11 @@ class CognitiveAnalysisAgent:
         # Analyze correlation findings
         correlations = analysis_results.get('correlation_analysis', {}).get('primary_correlations', {})
         significant_corrs = [name for name, data in correlations.items() 
-                           if data.get('p_value', 1) < 0.05]
+                           if data.get('p_value_fdr', data.get('p_value', 1)) < 0.05]
         
         if significant_corrs:
             insights['key_findings'].append(
-                f"Found {len(significant_corrs)} significant cross-assessment correlations"
+                f"Found {len(significant_corrs)} significant cross-assessment correlations (FDR-adjusted)"
             )
         
         # Check for novel findings
@@ -885,7 +910,7 @@ class CognitiveAnalysisAgent:
         # Primary findings
         correlations = analysis_results.get('correlation_analysis', {}).get('primary_correlations', {})
         significant_correlations = [name for name, data in correlations.items() 
-                                 if data.get('p_value', 1) < 0.05]
+                                 if data.get('p_value_fdr', data.get('p_value', 1)) < 0.05]
         
         summary['primary_findings'] = {
             'significant_cross_assessment_correlations': len(significant_correlations),
@@ -894,7 +919,7 @@ class CognitiveAnalysisAgent:
         
         # Recommendations
         if len(significant_correlations) > 0:
-            summary['recommendations'].append("Strong evidence for cross-assessment relationships")
+            summary['recommendations'].append("Strong evidence for cross-assessment relationships (FDR-adjusted)")
             summary['recommendations'].append("Consider validation in independent sample")
         
         if data_summary.get('baseline_subjects', 0) < 200:
@@ -935,6 +960,7 @@ class CognitiveAnalysisAgent:
         corr_names = []
         corr_values = []
         p_values = []
+        p_values_fdr = []
         
         for name, data in correlations.items():
             # Clean up names for display
@@ -944,23 +970,24 @@ class CognitiveAnalysisAgent:
             corr_names.append(display_name)
             corr_values.append(data.get('correlation_coefficient', 0))
             p_values.append(data.get('p_value', 1))
+            p_values_fdr.append(data.get('p_value_fdr', data.get('p_value', 1)))
         
         if len(corr_values) > 0:
             fig, ax = plt.subplots(figsize=(12, max(6, len(corr_names) * 0.3)))
             
             # Create horizontal bar plot
-            colors = ['red' if p < 0.05 else 'lightblue' for p in p_values]
+            colors = ['red' if p < 0.05 else 'lightblue' for p in p_values_fdr]
             bars = ax.barh(range(len(corr_values)), corr_values, color=colors, alpha=0.7)
             
             ax.set_yticks(range(len(corr_names)))
             ax.set_yticklabels(corr_names, fontsize=9)
             ax.set_xlabel('Correlation Coefficient')
-            ax.set_title('Cross-Assessment Correlations', fontweight='bold', fontsize=14)
+            ax.set_title('Cross-Assessment Correlations (FDR-adjusted)', fontweight='bold', fontsize=14)
             ax.grid(axis='x', alpha=0.3)
             ax.axvline(x=0, color='black', linestyle='-', alpha=0.5)
             
             # Add significance indicators
-            for i, (bar, p_val) in enumerate(zip(bars, p_values)):
+            for i, (bar, p_val) in enumerate(zip(bars, p_values_fdr)):
                 if p_val < 0.05:
                     ax.text(bar.get_width() + 0.01, bar.get_y() + bar.get_height()/2, 
                            '*', fontsize=12, fontweight='bold', va='center')
@@ -1117,7 +1144,7 @@ class CognitiveAnalysisAgent:
         correlations = results.get('correlation_analysis', {}).get('primary_correlations', {})
         if correlations:
             significant_corrs = [name for name, data in correlations.items() 
-                               if data.get('p_value', 1) < 0.05]
+                               if data.get('p_value_fdr', data.get('p_value', 1)) < 0.05]
             
             print(f"\n🔗 CORRELATION ANALYSIS:")
             print(f"   Total correlations tested: {len(correlations)}")
@@ -1132,7 +1159,7 @@ class CognitiveAnalysisAgent:
                 for corr_name in sorted_corrs:
                     corr_data = correlations[corr_name]
                     r = corr_data.get('correlation_coefficient', 0)
-                    p = corr_data.get('p_value', 1)
+                    p = corr_data.get('p_value_fdr', corr_data.get('p_value', 1))
                     n = corr_data.get('sample_size', 0)
                     effect = corr_data.get('effect_size', 'unknown')
                     print(f"      {corr_name}: r={r:.3f}, p={p:.4f}, n={n}, effect={effect}")

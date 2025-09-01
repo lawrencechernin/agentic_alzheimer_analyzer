@@ -56,10 +56,18 @@ class TokenManager:
         
         # Token pricing (approximate, update as needed)
         self.pricing = {
+            # Anthropic (legacy names)
             'claude-3-sonnet': {'input': 0.003, 'output': 0.015},  # per 1K tokens
             'claude-3-haiku': {'input': 0.00025, 'output': 0.00125},
+            # Anthropic (modern 3.5 family)
+            'claude-3-5-sonnet-20240620': {'input': 0.003, 'output': 0.015},
+            'claude-3-5-sonnet-20241022': {'input': 0.003, 'output': 0.015},
+            'claude-3-5-haiku-20241022': {'input': 0.00025, 'output': 0.00125},
+            # OpenAI
             'gpt-4': {'input': 0.03, 'output': 0.06},
+            'gpt-4o': {'input': 0.005, 'output': 0.015},
             'gpt-3.5-turbo': {'input': 0.0015, 'output': 0.002},
+            # Google
             'gemini-pro': {'input': 0.00025, 'output': 0.0005}
         }
         
@@ -148,23 +156,36 @@ class TokenManager:
             self.logger.warning(f"Error loading usage history: {e}")
             return []
     
-    def _save_usage_history(self):
-        """Save usage history to file"""
-        os.makedirs(os.path.dirname(self.usage_log_path), exist_ok=True)
-        
-        data = []
-        for usage in self.usage_history:
-            entry = asdict(usage)
-            entry['timestamp'] = usage.timestamp.isoformat()
-            data.append(entry)
-        
-        with open(self.usage_log_path, 'w') as f:
-            json.dump(data, f, indent=2)
+    def _match_pricing(self, model: str) -> Optional[Dict[str, float]]:
+        """Best-effort pricing match: exact key, then family prefix heuristics."""
+        if model in self.pricing:
+            return self.pricing[model]
+        # Heuristics by family
+        anthro_map = {
+            'claude-3-5-sonnet': 'claude-3-5-sonnet-20240620',
+            'claude-3-5-haiku': 'claude-3-5-haiku-20241022',
+            'claude-3-sonnet': 'claude-3-sonnet',
+            'claude-3-haiku': 'claude-3-haiku'
+        }
+        for prefix, key in anthro_map.items():
+            if model.startswith(prefix):
+                return self.pricing.get(key)
+        openai_map = {
+            'gpt-4o': 'gpt-4o',
+            'gpt-4': 'gpt-4',
+            'gpt-3.5': 'gpt-3.5-turbo'
+        }
+        for prefix, key in openai_map.items():
+            if model.startswith(prefix):
+                return self.pricing.get(key)
+        if model.startswith('gemini-pro'):
+            return self.pricing.get('gemini-pro')
+        return None
     
     def estimate_cost(self, provider: str, model: str, input_tokens: int, output_tokens: int) -> float:
         """Estimate cost for token usage"""
-        if model in self.pricing:
-            pricing = self.pricing[model]
+        pricing = self._match_pricing(model)
+        if pricing:
             input_cost = (input_tokens / 1000) * pricing['input']
             output_cost = (output_tokens / 1000) * pricing['output']
             return input_cost + output_cost
@@ -177,7 +198,7 @@ class TokenManager:
         Check if request would exceed limits
         
         Returns:
-            (can_proceed, reason_if_not)
+        (can_proceed, reason_if_not)
         """
         if provider not in self.limits or not self.limits[provider].enabled:
             return False, f"Provider {provider} not configured or disabled"

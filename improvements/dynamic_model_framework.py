@@ -26,11 +26,25 @@ try:
 except ImportError:
     XGBOOST_AVAILABLE = False
 
+# Do not import lightgbm at module import time to avoid pulling dask with incompatible pandas
+LIGHTGBM_AVAILABLE = False
 try:
-    from lightgbm import LGBMClassifier
-    LIGHTGBM_AVAILABLE = True
-except ImportError:
+    import importlib
+    _lgbm_spec = importlib.util.find_spec('lightgbm')
+    LIGHTGBM_AVAILABLE = _lgbm_spec is not None
+except Exception:
     LIGHTGBM_AVAILABLE = False
+
+
+def _safe_create_lgbm(**kwargs):
+    """Lazily import LightGBM and create classifier if possible, else return None."""
+    try:
+        from lightgbm import LGBMClassifier  # noqa: WPS433
+        return LGBMClassifier(**kwargs)
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"LightGBM unavailable or incompatible: {e}. Skipping LightGBM.")
+        return None
+
 
 class DynamicModelSelector:
     """
@@ -103,16 +117,16 @@ class DynamicModelSelector:
                         ))
                     )
         
-        # Add LightGBM if available
+        # Add LightGBM if available and creatable
         if LIGHTGBM_AVAILABLE:
             for pool_name, pool_data in pools.items():
                 if pool_name in ['medium_dataset', 'large_dataset', 'alzheimer_specialized']:
-                    pool_data['models'].append(
-                        ('LightGBM', LGBMClassifier(
-                            n_estimators=150, learning_rate=0.1, max_depth=6,
-                            random_state=42, verbose=-1
-                        ))
+                    lgbm = _safe_create_lgbm(
+                        n_estimators=150, learning_rate=0.1, max_depth=6,
+                        random_state=42, verbose=-1
                     )
+                    if lgbm is not None:
+                        pool_data['models'].append(('LightGBM', lgbm))
         
         return pools
     

@@ -66,10 +66,13 @@ class AgenticAlzheimerAnalyzer:
         # Initialize token management
         self.token_manager = TokenManager("config/usage_limits.json")
         
-        # Initialize AI clients
-        self.ai_clients = self._initialize_ai_clients()
+        # Offline mode flag
+        self.offline_ai_mode = self.config.get('ai_settings', {}).get('offline_mode', False)
         
-        # Validate that at least one AI client is available
+        # Initialize AI clients
+        self.ai_clients = self._initialize_ai_clients() if not self.offline_ai_mode else {}
+        
+        # Validate that at least one AI client is available or offline mode is enabled
         self._validate_ai_clients()
         
         # Initialize agents
@@ -92,7 +95,8 @@ class AgenticAlzheimerAnalyzer:
             'recommendations': []
         }
         
-        self.logger.info("🤖 Agentic Alzheimer's Analyzer orchestrator initialized")
+        mode_msg = "offline AI mode" if self.offline_ai_mode else "standard AI mode"
+        self.logger.info(f"🤖 Agentic Alzheimer's Analyzer orchestrator initialized ({mode_msg})")
     
     def _load_config(self) -> Dict[str, Any]:
         """Load main configuration file"""
@@ -186,45 +190,21 @@ class AgenticAlzheimerAnalyzer:
                     self.logger.warning("Continuing without Gemini - Claude/OpenAI available")
         
         if not clients:
-            self.logger.error("⚠️ No AI clients initialized - missing libraries and/or API keys")
+            self.logger.warning("⚠️ No AI clients initialized")
         
         return clients
     
     def _validate_ai_clients(self):
         """Validate that at least one AI client is properly configured"""
+        if self.offline_ai_mode:
+            self.logger.info("🛡️ Offline AI mode enabled — AI synthesis will be skipped")
+            print("🛡️ Offline AI mode: proceeding without external AI providers.")
+            return
+        
         if not self.ai_clients:
-            error_msg = """
-🚨 ERROR: No AI clients available!
-
-The Agentic Alzheimer's Analyzer requires at least one AI provider to function.
-
-STEP 1: Install required AI libraries:
-  pip install anthropic openai google-generativeai
-
-STEP 2: Configure an API key for one of the following providers:
-
-For Claude (Anthropic) - RECOMMENDED:
-  export ANTHROPIC_API_KEY="your_anthropic_api_key_here"
-
-For OpenAI:  
-  export OPENAI_API_KEY="your_openai_api_key_here"
-
-For Gemini:
-  export GEMINI_API_KEY="your_gemini_api_key_here"
-
-STEP 3: Restart the analysis.
-
-💡 Get API keys at:
-- Claude: https://console.anthropic.com/
-- OpenAI: https://platform.openai.com/api-keys  
-- Gemini: https://makersuite.google.com/app/apikey
-
-📦 Or install all dependencies at once:
-  pip install -r requirements.txt
-"""
-            self.logger.error("No AI clients available - exiting")
-            print(error_msg)
-            sys.exit(1)
+            self.logger.warning("⚠️ No AI clients available — falling back to offline mode for synthesis")
+            self.offline_ai_mode = True
+            return
         
         # Log available clients
         available_clients = list(self.ai_clients.keys())
@@ -265,7 +245,7 @@ For Anthropic (Claude):
   2. Add payment method or purchase credits
   3. Current error: Credit balance too low
 
-For OpenAI:
+For OpenAI:  
   1. Visit: https://platform.openai.com/account/billing  
   2. Add payment method or increase quota
   3. Check usage limits at: https://platform.openai.com/account/usage
@@ -441,10 +421,13 @@ Analysis cannot proceed without resolving credit/billing issues.
             analysis = self.results.get('analysis', {})
             literature = self.results.get('literature', {})
             
-            # Cross-agent insights
-            synthesis_results['cross_agent_insights'] = self._generate_cross_agent_insights(
-                discovery, analysis, literature
-            )
+            # Cross-agent insights (AI when available; otherwise rule-based summary)
+            if not self.offline_ai_mode and self.ai_clients:
+                synthesis_results['cross_agent_insights'] = self._generate_cross_agent_insights(
+                    discovery, analysis, literature
+                )
+            else:
+                synthesis_results['cross_agent_insights'] = self._generate_rule_based_insights(discovery, analysis, literature)
             
             # Identify novel discoveries
             synthesis_results['novel_discoveries'] = self._identify_novel_discoveries(
@@ -457,7 +440,7 @@ Analysis cannot proceed without resolving credit/billing issues.
             )
             
             # AI-powered hypothesis generation (if AI available)
-            if self.ai_clients:
+            if not self.offline_ai_mode and self.ai_clients:
                 synthesis_results['ai_generated_hypotheses'] = self._generate_ai_hypotheses()
             
             return synthesis_results
@@ -466,6 +449,23 @@ Analysis cannot proceed without resolving credit/billing issues.
             self.logger.error(f"Synthesis phase failed: {e}")
             synthesis_results['error'] = str(e)
             return synthesis_results
+    
+    def _generate_rule_based_insights(self, discovery: Dict, analysis: Dict, literature: Dict) -> List[str]:
+        """Fallback, deterministic insights without external AI."""
+        insights = []
+        try:
+            dq = discovery.get('data_quality', {}).get('overall_score', 0)
+            sig_corrs = len([1 for _, v in analysis.get('correlation_analysis', {}).get('primary_correlations', {}).items() if v.get('p_value', 1) < 0.05])
+            n_papers = literature.get('papers_found', {}).get('total_unique_papers', 0)
+            if dq:
+                insights.append(f"Data quality supports analysis (score {dq:.2f}).")
+            if sig_corrs:
+                insights.append(f"Identified {sig_corrs} significant cross-assessment correlations; consider FDR-adjusted review.")
+            if n_papers:
+                insights.append(f"Findings contextualized against {n_papers} papers; examine confirmatory vs novel signals.")
+        except Exception:
+            pass
+        return insights
     
     def _generate_cross_agent_insights(self, discovery: Dict, analysis: Dict, 
                                      literature: Dict) -> List[str]:
@@ -594,7 +594,8 @@ Format as concise bullet points, one insight per line.
                 self.logger.info(f"✨ Generated {len(ai_insights)} cross-agent insights using Gemini")
                 
             else:
-                raise Exception("No AI clients available")
+                # No clients — fall back to rule-based
+                return self._generate_rule_based_insights(discovery, analysis, literature)
                 
         except Exception as e:
             # Check for credit/quota issues
@@ -602,8 +603,8 @@ Format as concise bullet points, one insight per line.
                 self._handle_credit_error(e)
             
             self.logger.error(f"Failed to generate AI insights: {e}")
-            self.logger.error("Cannot proceed without AI analysis - this is an AI-powered framework")
-            return []
+            self.logger.warning("Falling back to offline rule-based insights")
+            return self._generate_rule_based_insights(discovery, analysis, literature)
         
         return insights
     
@@ -674,7 +675,7 @@ Format as clear bullet points under each section. Write in plain English for res
 """
             
             # Try Claude first, then OpenAI, then Gemini
-            if 'claude' in self.ai_clients:
+            if not self.offline_ai_mode and 'claude' in self.ai_clients:
                 client = self.ai_clients['claude']
                 response = client.messages.create(
                     model=self.config.get('ai_providers', {}).get('claude', {}).get('default_model', 'claude-3-sonnet-20240229'),
@@ -695,8 +696,9 @@ Format as clear bullet points under each section. Write in plain English for res
                 )
                 
                 return response.content[0].text.strip()
-                
-            elif 'openai' in self.ai_clients:
+            
+            # Fallback to OpenAI
+            if not self.offline_ai_mode and 'openai' in self.ai_clients:
                 client = self.ai_clients['openai']
                 response = client.chat.completions.create(
                     model=self.config.get('ai_providers', {}).get('openai', {}).get('default_model', 'gpt-4'),
@@ -717,8 +719,9 @@ Format as clear bullet points under each section. Write in plain English for res
                 )
                 
                 return response.choices[0].message.content.strip()
-                
-            elif 'gemini' in self.ai_clients and GEMINI_AVAILABLE and genai is not None:
+            
+            # Fallback to Gemini
+            if not self.offline_ai_mode and 'gemini' in self.ai_clients and GEMINI_AVAILABLE and genai is not None:
                 client = self.ai_clients['gemini']
                 response = client.generate_content(context)
                 
@@ -735,9 +738,9 @@ Format as clear bullet points under each section. Write in plain English for res
                 )
                 
                 return response.text.strip()
-                
-            else:
-                return "❌ No AI clients available - cannot generate findings summary. This framework requires AI analysis."
+            
+            # Offline or no clients — provide deterministic, human-readable summary
+            return self._generate_offline_findings_summary()
                 
         except Exception as e:
             # Check for credit/quota issues
@@ -745,7 +748,31 @@ Format as clear bullet points under each section. Write in plain English for res
                 self._handle_credit_error(e)
             
             self.logger.error(f"Failed to generate AI findings summary: {e}")
-            return "❌ Failed to generate AI-powered findings summary. Check API keys and connectivity."
+            # Fallback to offline summary
+            return self._generate_offline_findings_summary()
+    
+    def _generate_offline_findings_summary(self) -> str:
+        """Produce a plain, deterministic summary without calling external AI."""
+        discovery = self.results.get('discovery', {})
+        analysis = self.results.get('analysis', {})
+        literature = self.results.get('literature', {})
+        synthesis = self.results.get('synthesis', {})
+        total_subjects = discovery.get('dataset_info', {}).get('total_subjects', 0)
+        files_processed = discovery.get('dataset_info', {}).get('files_analyzed', 0)
+        sig_corrs = len([1 for _, v in analysis.get('correlation_analysis', {}).get('primary_correlations', {}).items() if v.get('p_value', 1) < 0.05])
+        papers = literature.get('papers_found', {}).get('total_unique_papers', 0)
+        lines = []
+        lines.append("## 🔬 KEY FINDINGS")
+        lines.append(f"- Subjects analyzed: {total_subjects}")
+        lines.append(f"- Files processed: {files_processed}")
+        lines.append(f"- Significant correlations: {sig_corrs}")
+        lines.append("\n## 🏥 CLINICAL SIGNIFICANCE")
+        lines.append("- Cross-assessment relationships observed; review adjusted results after FDR correction.")
+        lines.append("\n## 📚 LITERATURE CONTEXT")
+        lines.append(f"- Papers reviewed: {papers}")
+        lines.append("\n## 🚀 NEXT STEPS")
+        lines.append("- Validate findings in an external cohort and assess robustness.")
+        return "\n".join(lines)
     
     def _identify_novel_discoveries(self, analysis: Dict, literature: Dict) -> List[str]:
         """Identify potentially novel discoveries"""
@@ -930,8 +957,8 @@ Format as a simple list of hypotheses, one per line.
                 self.logger.info(f"✨ Generated {len(ai_hypotheses)} AI-powered hypotheses using Gemini")
                 
             else:
-                self.logger.warning("No AI clients available, using fallback hypotheses")
-                raise Exception("No AI clients available")
+                self.logger.info("Offline mode: skipping AI hypothesis generation")
+                return []
                 
         except Exception as e:
             # Check for credit/quota issues
@@ -939,7 +966,7 @@ Format as a simple list of hypotheses, one per line.
                 self._handle_credit_error(e)
             
             self.logger.error(f"Failed to generate AI hypotheses: {e}")
-            self.logger.error("Cannot proceed without AI analysis - this is an AI-powered framework")
+            self.logger.info("Offline mode: returning no hypotheses")
             return []
         
         return hypotheses
@@ -1186,19 +1213,6 @@ Autonomous AI agents analyzed {sample_size:,} subjects to explore relationships 
         # Generate AI-powered summary of key findings
         findings_summary = self._generate_ai_findings_summary()
         
-        # Check if AI summary generation failed - exit if so
-        if ("❌ Failed to generate AI-powered findings summary" in findings_summary or 
-            "❌ No AI clients available" in findings_summary):
-            print("\n" + "="*100)
-            print("🤖 AI-GENERATED FINDINGS SUMMARY")
-            print("="*100)
-            print(findings_summary)
-            print("="*100)
-            print("\n🚨 CRITICAL ERROR: AI analysis failed!")
-            print("The Agentic Alzheimer's Analyzer requires AI providers for final analysis.")
-            print("Please configure API keys and restart the analysis.")
-            exit(1)
-        
         # Save summary to file for persistence
         try:
             with open('outputs/key_findings_summary.md', 'w') as f:
@@ -1213,7 +1227,7 @@ Autonomous AI agents analyzed {sample_size:,} subjects to explore relationships 
         
         # Display summary
         print("\n" + "="*100)
-        print("🤖 AI-GENERATED FINDINGS SUMMARY")
+        print("🤖 AI-GENERATED FINDINGS SUMMARY" if not self.offline_ai_mode and self.ai_clients else "🛡️ OFFLINE FINDINGS SUMMARY")
         print("="*100)
         print(findings_summary)
         print("="*100)

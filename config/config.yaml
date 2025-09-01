@@ -63,6 +63,10 @@ experiment:
     confidence_intervals: ["Low_Confidence_Limit", "High_Confidence_Limit"]
     stratification: ["StratificationCategory1", "Stratification1", "StratificationCategory2", "Stratification2"]
 
+# AI Settings
+ai_settings:
+  offline_mode: false  # When true, skip external AI calls and use deterministic summaries
+
 # AI Configuration
 ai_providers:
   # Provider preferences (in order of preference)

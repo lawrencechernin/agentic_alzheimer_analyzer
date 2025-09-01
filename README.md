@@ -473,7 +473,8 @@ The framework is designed to be easily extended:
 
 ### Data Protection
 
-- No data transmitted to AI services (analysis is local)
+- Offline mode available: set `ai_settings.offline_mode: true` to disable any external AI calls and use deterministic summaries
+- When online AI is enabled, the framework avoids sending raw subject-level data in prompts; only aggregated, anonymized summaries are used
 - Automatic anonymization of outputs
 - Configurable privacy levels
 - HIPAA-compatible deployment options

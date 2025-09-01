@@ -3,14 +3,14 @@
 
 # Dataset Configuration
 dataset:
-  name: "OASIS_CDR_MRI_Prediction"
-  description: "OASIS dataset analysis for predicting Clinical Dementia Rating (CDR) from MRI and demographic features"
+  name: "BRFSS_Alzheimers_Healthy_Aging"
+  description: "BRFSS dataset analysis for Alzheimer's Disease and Healthy Aging surveillance data"
   
   # Data sources (can be paths, URLs, or other data sources)
   data_sources:
-    - path: "./training_data/oasis/"
+    - path: "./training_data/brfss/"
       type: "local_directory"
-      description: "OASIS brain imaging and clinical data"
+      description: "BRFSS Alzheimer's Disease and Healthy Aging surveillance data"
     # Example of multiple data sources for future experiments:
     # - path: "../additional_cohort/data/"
     #   type: "local_directory" 
@@ -24,44 +24,44 @@ dataset:
   
   # File patterns to search for
   file_patterns:
-    brain_imaging_data:
-      - "oasis_cross-sectional.csv"
-      - "oasis_longitudinal.csv"
-      - "*oasis*.csv"
-      - "*mri*.csv"
+    brfss_surveillance_data:
+      - "Alzheimers_Disease_And_Healthy_Aging.csv"
+      - "*alzheimer*.csv"
+      - "*brfss*.csv"
+      - "*aging*.csv"
     
-    clinical_data:
-      - "oasis_*.csv"
-      - "*clinical*.csv"
-      - "*cdr*.csv"
+    health_data:
+      - "*.csv"
+      - "*health*.csv"
+      - "*surveillance*.csv"
 
 # Research Goals and Experiment Configuration
 experiment:
-  name: "OASIS_CDR_MRI_Prediction_Study"
-  dataset: "OASIS_CDR_MRI_Prediction"  # Links to dataset.name above
+  name: "BRFSS_Alzheimers_Surveillance_Analysis"
+  dataset: "BRFSS_Alzheimers_Healthy_Aging"  # Links to dataset.name above
   
   primary_objectives:
-    - "Predict Clinical Dementia Rating (CDR) from MRI brain imaging features"
-    - "Identify most predictive MRI biomarkers for cognitive decline"
-    - "Evaluate demographic factors in CDR prediction models"
-    - "Compare cross-sectional vs longitudinal prediction performance"
-    - "Develop interpretable CDR severity classification model"
+    - "Analyze state-level patterns in Alzheimer's disease and healthy aging indicators"
+    - "Identify regional variations in cognitive health outcomes"
+    - "Examine temporal trends in Alzheimer's disease surveillance metrics"
+    - "Correlate healthy aging indicators with Alzheimer's disease prevalence"
+    - "Assess demographic and geographic risk factors"
   
   secondary_analyses:
-    - "Age-stratified CDR prediction patterns"
-    - "Gender differences in brain imaging biomarkers"
-    - "Education effects on CDR progression"
-    - "MMSE vs CDR correlation validation"
-    - "Brain volume normalization impact on predictions"
+    - "Age-stratified analysis of cognitive health indicators"
+    - "State-by-state comparison of Alzheimer's disease burden"
+    - "Temporal analysis of surveillance trends (2017-2020)"
+    - "Social determinants of health impact on cognitive outcomes"
+    - "Confidence interval analysis for surveillance estimates"
   
   # Specific variables of interest (will be auto-mapped from data dictionary)
   target_variables:
-    cdr_outcome: ["CDR", "cdr", "clinical_dementia_rating"]
-    mri_features: ["eTIV", "nWBV", "ASF", "etiv", "nwbv", "asf"]
-    demographics: ["Age", "M/F", "EDUC", "Educ", "SES", "age", "gender", "education", "ses"]
-    cognitive_measures: ["MMSE", "mmse", "mini_mental"]
-    brain_volumes: ["eTIV", "nWBV", "ASF", "total_intracranial_volume", "normalized_whole_brain_volume", "atlas_scaling_factor"]
-    clinical_status: ["Group", "Nondemented", "Demented", "group", "diagnosis"]
+    surveillance_metrics: ["Data_Value", "Data_Value_Alt", "Data_Value_Type"]
+    geographic_indicators: ["LocationAbbr", "LocationDesc", "Geolocation"]
+    temporal_variables: ["YearStart", "YearEnd"]
+    health_categories: ["Class", "Topic", "Question"]
+    confidence_intervals: ["Low_Confidence_Limit", "High_Confidence_Limit"]
+    stratification: ["StratificationCategory1", "Stratification1", "StratificationCategory2", "Stratification2"]
 
 # AI Configuration
 ai_providers:
@@ -129,13 +129,13 @@ literature_research:
   enabled: true
   max_papers_per_query: 20
   search_terms:
-    - "CDR clinical dementia rating MRI prediction"
-    - "brain imaging biomarkers cognitive decline"
-    - "MRI features dementia classification"
-    - "OASIS dataset CDR prediction models"
-    - "brain volume normalized whole brain CDR"
-    - "eTIV nWBV ASF cognitive impairment"
-    - "structural MRI Alzheimer disease CDR"
+    - "BRFSS Alzheimer disease surveillance data"
+    - "behavioral risk factor surveillance system cognitive health"
+    - "state level Alzheimer disease prevalence trends"
+    - "healthy aging surveillance indicators"
+    - "population based cognitive health monitoring"
+    - "geographic variation Alzheimer disease burden"
+    - "public health surveillance dementia trends"
   
   databases: ["pubmed", "semantic_scholar"]  # Available: pubmed, semantic_scholar, arxiv
   

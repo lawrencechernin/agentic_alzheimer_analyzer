@@ -631,3 +631,24 @@ This framework represents more than just a technical tool - it's a catalyst for 
 ---
 
 **🧠 Empowering every researcher worldwide to accelerate the fight against Alzheimer's disease through autonomous AI.**
+
+## 🔐 Data Policy
+- This repository does not include any raw subject-level data.
+- Local datasets should be placed under `training_data/` (which is git-ignored) following adapter expectations:
+  - BRFSS CSVs under `training_data/brfss/`
+  - OASIS CSVs under `training_data/oasis/`
+- See adapters and docs for acquisition steps; do not commit raw data to the repository.
+
+## 📁 Repository Layout
+
+- `agents/` — discovery, analysis, literature agents
+- `core/` — orchestrator, token manager, datasets adapters
+- `improvements/` — feature engineering, clinical metrics, modeling utilities
+- `tests/` — unit/integration tests (non-interactive)
+- `scripts/` — utility scripts (e.g., ADNI debugging, downloader setup)
+- `examples/` — example analysis scripts and debugging helpers
+- `docs/` — `ARCHITECTURE.md`, `CONTRIBUTING.md`, improvements summaries
+- `training_data/` — placeholders; user-provided local data only (git-ignored)
+- `outputs/` — analysis outputs (git-ignored)
+
+See `docs/ARCHITECTURE.md` and `docs/CONTRIBUTING.md` for architecture and contribution details.

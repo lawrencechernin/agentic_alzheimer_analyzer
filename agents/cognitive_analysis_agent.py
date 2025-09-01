@@ -23,7 +23,7 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingClassifier, RandomForestClassifier
 from sklearn.model_selection import cross_val_score, train_test_split, RandomizedSearchCV, StratifiedKFold
 from sklearn.impute import SimpleImputer
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, f1_score, precision_score, recall_score
 try:
     from xgboost import XGBClassifier
     XGBOOST_AVAILABLE = True
@@ -46,6 +46,14 @@ try:
     ENHANCEMENTS_AVAILABLE = True
 except ImportError:
     ENHANCEMENTS_AVAILABLE = False
+
+# Import F1-focused clinical evaluation system
+try:
+    sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'improvements'))
+    from clinical_evaluation_metrics import ClinicalEvaluator
+    F1_EVALUATION_AVAILABLE = True
+except ImportError:
+    F1_EVALUATION_AVAILABLE = False
 
 class CognitiveAnalysisAgent:
     """
@@ -127,6 +135,11 @@ class CognitiveAnalysisAgent:
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        
+        # Initialize F1-focused clinical evaluator
+        self.clinical_evaluator = ClinicalEvaluator() if F1_EVALUATION_AVAILABLE else None
+        if F1_EVALUATION_AVAILABLE:
+            self.logger.info("✅ F1-focused clinical evaluation system loaded")
     
     def run_complete_analysis(self) -> Dict[str, Any]:
         """Execute complete cognitive assessment analysis pipeline"""
@@ -1134,11 +1147,43 @@ class CognitiveAnalysisAgent:
                 p = corr_analysis.get('p_value', 1)
                 print(f"   Self-informant correlation: r={r:.3f}, p={p:.4f}")
         
-        # Clinical insights
+        # F1-FOCUSED CDR Prediction Results
+        cdr_prediction = results.get('advanced_cdr_prediction', {})
+        if cdr_prediction and 'best_model' in cdr_prediction:
+            best_model = cdr_prediction['best_model']
+            if best_model:
+                print(f"\n🎯 F1-FOCUSED CDR PREDICTION RESULTS:")
+                print(f"   🥇 Best Model: {best_model.get('name', 'Unknown')}")
+                
+                # Prioritize F1 scores in display
+                if 'test_f1_weighted' in best_model:
+                    print(f"   🔥 F1-Score (Weighted): {best_model['test_f1_weighted']:.3f}")
+                    print(f"   🔥 F1-Score (Macro): {best_model['test_f1_macro']:.3f}")
+                    print(f"   🔥 Precision (Weighted): {best_model['test_precision']:.3f}")
+                    print(f"   🔥 Recall (Weighted): {best_model['test_recall']:.3f}")
+                    print(f"   📈 Accuracy: {best_model['test_accuracy']:.3f}")
+                
+                # Clinical acceptability
+                test_f1 = best_model.get('test_f1_weighted', 0)
+                test_precision = best_model.get('test_precision', 0)
+                test_recall = best_model.get('test_recall', 0)
+                clinically_acceptable = test_f1 >= 0.75 and test_precision >= 0.75 and test_recall >= 0.75
+                print(f"   🏥 Clinical Acceptability: {'✅ APPROVED' if clinically_acceptable else '❌ NEEDS IMPROVEMENT'}")
+                
+                # F1-focused insights
+                cdr_insights = cdr_prediction.get('clinical_insights', [])
+                if cdr_insights:
+                    print(f"   💡 F1-Focused Clinical Insights:")
+                    for insight in cdr_insights[:3]:  # Show top 3 insights
+                        # Clean up insight formatting for display
+                        clean_insight = insight.replace('🏆 ', '').replace('✅ ', '').replace('🎯 ', '').replace('⚠️ ', '')
+                        print(f"      • {clean_insight}")
+
+        # General Clinical insights
         insights = results.get('clinical_insights', {})
         key_findings = insights.get('key_findings', [])
         if key_findings:
-            print(f"\n💡 KEY FINDINGS:")
+            print(f"\n💡 ADDITIONAL KEY FINDINGS:")
             for i, finding in enumerate(key_findings, 1):
                 print(f"   {i}. {finding}")
         
@@ -1556,47 +1601,95 @@ class CognitiveAnalysisAgent:
                     n_estimators=100
                 )
             
-            # Test each model
-            best_score = 0
+            # Test each model with F1-focused evaluation
+            best_f1_score = 0
             best_model_name = None
             best_model = None
             
             # First test individual models
             for name, model in models.items():
                 try:
-                    # BENCHMARK APPROACH: 10-fold CV on full dataset (this is the main evaluation!)
-                    cv_scores = cross_val_score(model, X_scaled, y_encoded, cv=10, scoring='accuracy')
-                    mean_score = cv_scores.mean()
-                    
-                    # Additional train/test evaluation for completeness
-                    model.fit(X_train, y_train)
-                    test_score = model.score(X_test, y_test)
-                    
-                    # NOTE: The benchmark reports CV score as main metric, not test score
-                    
-                    model_results = {
-                        'name': name,
-                        'cv_mean': mean_score,
-                        'cv_std': cv_scores.std(),
-                        'test_accuracy': test_score,
-                        'cv_scores': cv_scores.tolist()
-                    }
+                    # F1-FOCUSED EVALUATION: Use comprehensive clinical evaluation if available
+                    if self.clinical_evaluator:
+                        self.logger.info(f"   🎯 {name}: F1-focused clinical evaluation...")
+                        
+                        # Get comprehensive metrics using clinical evaluator
+                        X_df = pd.DataFrame(X_scaled, columns=[f'feature_{i}' for i in range(X_scaled.shape[1])])
+                        y_series = pd.Series(y_encoded)
+                        
+                        comprehensive_metrics = self.clinical_evaluator.evaluate_model_comprehensive(
+                            model, X_df, y_series, cv=5
+                        )
+                        
+                        # Extract key metrics
+                        f1_weighted = comprehensive_metrics['f1_weighted_mean']
+                        f1_macro = comprehensive_metrics['f1_macro_mean']
+                        precision_weighted = comprehensive_metrics['precision_weighted_mean']
+                        recall_weighted = comprehensive_metrics['recall_weighted_mean']
+                        accuracy_mean = comprehensive_metrics['accuracy_mean']
+                        clinical_quality = comprehensive_metrics['clinical_quality_score']
+                        
+                        model_results = {
+                            'name': name,
+                            'f1_weighted': f1_weighted,
+                            'f1_macro': f1_macro,
+                            'precision_weighted': precision_weighted,
+                            'recall_weighted': recall_weighted,
+                            'accuracy_mean': accuracy_mean,
+                            'clinical_quality_score': clinical_quality,
+                            'clinically_acceptable': comprehensive_metrics['clinically_acceptable'],
+                            'comprehensive_metrics': comprehensive_metrics
+                        }
+                        
+                        # Log F1-focused results prominently
+                        self.logger.info(f"   📊 {name} CLINICAL EVALUATION:")
+                        self.logger.info(f"      🎯 F1 (Weighted): {f1_weighted:.3f} ± {comprehensive_metrics['f1_weighted_std']:.3f}")
+                        self.logger.info(f"      🎯 F1 (Macro): {f1_macro:.3f} ± {comprehensive_metrics['f1_macro_std']:.3f}")
+                        self.logger.info(f"      🎯 Precision: {precision_weighted:.3f} ± {comprehensive_metrics['precision_weighted_std']:.3f}")
+                        self.logger.info(f"      🎯 Recall: {recall_weighted:.3f} ± {comprehensive_metrics['recall_weighted_std']:.3f}")
+                        self.logger.info(f"      🎯 Accuracy: {accuracy_mean:.3f} ± {comprehensive_metrics['accuracy_std']:.3f}")
+                        self.logger.info(f"      🏥 Clinical Quality Score: {clinical_quality:.3f}")
+                        self.logger.info(f"      🏥 Clinically Acceptable: {'✅ Yes' if comprehensive_metrics['clinically_acceptable'] else '❌ No'}")
+                        
+                        # Track best model based on F1-weighted score (primary clinical metric)
+                        if f1_weighted > best_f1_score:
+                            best_f1_score = f1_weighted
+                            best_model_name = name
+                            best_model = model
+                        
+                    else:
+                        # Fallback to basic evaluation
+                        cv_scores = cross_val_score(model, X_scaled, y_encoded, cv=10, scoring='f1_weighted')
+                        mean_f1 = cv_scores.mean()
+                        
+                        # Additional train/test evaluation
+                        model.fit(X_train, y_train)
+                        y_pred = model.predict(X_test)
+                        test_f1 = f1_score(y_test, y_pred, average='weighted')
+                        
+                        model_results = {
+                            'name': name,
+                            'f1_weighted': mean_f1,
+                            'f1_weighted_std': cv_scores.std(),
+                            'test_f1': test_f1,
+                            'cv_scores': cv_scores.tolist()
+                        }
+                        
+                        self.logger.info(f"   {name}: F1={mean_f1:.3f}±{cv_scores.std():.3f}, Test F1={test_f1:.3f}")
+                        
+                        # Track best model
+                        if mean_f1 > best_f1_score:
+                            best_f1_score = mean_f1
+                            best_model_name = name
+                            best_model = model
                     
                     prediction_results['models_tested'].append(model_results)
-                    
-                    self.logger.info(f"   {name}: CV={mean_score:.3f}±{cv_scores.std():.3f}, Test={test_score:.3f}")
-                    
-                    # Track best model
-                    if mean_score > best_score:
-                        best_score = mean_score
-                        best_model_name = name
-                        best_model = model
                         
                 except Exception as e:
                     self.logger.warning(f"   {name} failed: {e}")
             
             # Test ensemble model if enhancements are available
-            if ENHANCEMENTS_AVAILABLE and best_score > 0:
+            if ENHANCEMENTS_AVAILABLE and best_f1_score > 0:
                 try:
                     self.logger.info("   🎯 Testing advanced ensemble model...")
                     enhancer = EnhancedCDRPredictor(logger=self.logger)
@@ -1624,36 +1717,47 @@ class CognitiveAnalysisAgent:
                     
                     prediction_results['models_tested'].append(ensemble_model_results)
                     
-                    # Check if ensemble is best
-                    if ensemble_results['ensemble_cv_mean'] > best_score:
-                        best_score = ensemble_results['ensemble_cv_mean']
+                    # Check if ensemble is best (using F1 as primary metric)
+                    ensemble_f1 = ensemble_results.get('ensemble_f1_score', ensemble_results['ensemble_cv_mean'])
+                    if ensemble_f1 > best_f1_score:
+                        best_f1_score = ensemble_f1
                         best_model_name = 'Ensemble'
                         best_model = ensemble_results['model']
-                        self.logger.info(f"   ✅ Ensemble is new best model: CV={ensemble_results['ensemble_cv_mean']:.3f}")
+                        self.logger.info(f"   ✅ Ensemble is new best model: F1={ensemble_f1:.3f}")
                     
                 except Exception as e:
                     self.logger.warning(f"   Ensemble model failed: {e}")
             
             if best_model is not None:
-                # Enhanced evaluation of best model
+                # F1-FOCUSED evaluation of best model
                 # Use correct feature dimensions based on model type
                 if best_model_name == 'Ensemble':
                     # Ensemble was trained on selected features
                     y_pred = best_model.predict(X_test_ens)
-                    test_accuracy = accuracy_score(y_test_ens, y_pred)
+                    y_true = y_test_ens
                 else:
                     # Individual models were trained on full feature set
                     y_pred = best_model.predict(X_test)
-                    test_accuracy = accuracy_score(y_test, y_pred)
+                    y_true = y_test
                 
-                # Get correct y_true for classification report
-                y_true = y_test_ens if best_model_name == 'Ensemble' else y_test
+                # Calculate comprehensive F1-focused metrics
+                test_accuracy = accuracy_score(y_true, y_pred)
+                test_f1_weighted = f1_score(y_true, y_pred, average='weighted')
+                test_f1_macro = f1_score(y_true, y_pred, average='macro')
+                test_precision = precision_score(y_true, y_pred, average='weighted')
+                test_recall = recall_score(y_true, y_pred, average='weighted')
+                
+                classification_report_dict = classification_report(y_true, y_pred, output_dict=True)
                 
                 prediction_results['best_model'] = {
                     'name': best_model_name,
-                    'cv_accuracy': best_score,
+                    'f1_weighted': best_f1_score,  # Cross-validation F1 score
+                    'test_f1_weighted': test_f1_weighted,  # Test set F1 score
+                    'test_f1_macro': test_f1_macro,
+                    'test_precision': test_precision,
+                    'test_recall': test_recall,
                     'test_accuracy': test_accuracy,
-                    'classification_report': classification_report(y_true, y_pred, output_dict=True)
+                    'classification_report': classification_report_dict
                 }
                 
                 # Feature importance (if available)
@@ -1684,41 +1788,75 @@ class CognitiveAnalysisAgent:
                     for _, row in importance_df.head(5).iterrows():
                         self.logger.info(f"      {row['feature']}: {row['importance']:.3f}")
                 
-                # Clinical insights with F1-score information
+                # F1-FOCUSED Clinical insights
                 insights = []
-                test_acc = prediction_results['best_model']['test_accuracy']
-                classification_report_data = prediction_results['best_model']['classification_report']
-                weighted_f1 = classification_report_data.get('weighted avg', {}).get('f1-score', 0)
+                test_f1_weighted = prediction_results['best_model']['test_f1_weighted']
+                test_f1_macro = prediction_results['best_model']['test_f1_macro']
+                test_precision = prediction_results['best_model']['test_precision']
+                test_recall = prediction_results['best_model']['test_recall']
+                test_accuracy = prediction_results['best_model']['test_accuracy']
                 
-                if test_acc > 0.8:
-                    insights.append("Excellent CDR prediction accuracy achieved (>80%)")
-                elif test_acc > 0.7:
-                    insights.append("Good CDR prediction accuracy achieved (>70%)")
+                # F1-based clinical assessment (more important than accuracy for medical applications)
+                if test_f1_weighted > 0.85:
+                    insights.append("🏆 EXCELLENT F1 PERFORMANCE: Weighted F1 > 0.85 - Clinical deployment ready")
+                elif test_f1_weighted > 0.80:
+                    insights.append("✅ STRONG F1 PERFORMANCE: Weighted F1 > 0.80 - Clinically acceptable")
+                elif test_f1_weighted > 0.75:
+                    insights.append("🎯 GOOD F1 PERFORMANCE: Weighted F1 > 0.75 - Shows clinical promise")
                 else:
-                    insights.append("Moderate CDR prediction accuracy - consider feature engineering")
+                    insights.append("⚠️ LIMITED F1 PERFORMANCE: Consider feature engineering or data augmentation")
+                
+                # Precision-Recall balance analysis
+                if test_precision > 0.80 and test_recall > 0.80:
+                    insights.append("⚖️ BALANCED PRECISION-RECALL: Low false positives AND low false negatives")
+                elif test_precision > 0.80:
+                    insights.append("🎯 HIGH PRECISION: Low false positive rate - conservative predictions")
+                elif test_recall > 0.80:
+                    insights.append("🔍 HIGH RECALL: Low false negative rate - good case detection")
+                else:
+                    insights.append("📊 MODERATE PRECISION-RECALL: Room for improvement in clinical decision balance")
+                
+                # Class balance analysis
+                if abs(test_f1_weighted - test_f1_macro) < 0.05:
+                    insights.append("🎯 WELL-BALANCED CLASS PERFORMANCE: Similar performance across all CDR levels")
+                else:
+                    insights.append("⚠️ CLASS IMBALANCE DETECTED: Some CDR levels predicted better than others")
                 
                 if len(X.columns) > 20:
-                    insights.append("High-dimensional feature space - dimensionality reduction may help")
+                    insights.append("📊 HIGH-DIMENSIONAL ANALYSIS: Feature selection may improve interpretability")
                 
                 prediction_results['clinical_insights'] = insights
                 
-                # Enhanced logging with F1-score details
-                self.logger.info(f"   ✅ Best model: {best_model_name}")
-                self.logger.info(f"      📊 Test Accuracy: {test_acc:.1%}")
-                self.logger.info(f"      📊 Weighted F1-Score: {weighted_f1:.3f}")
-                self.logger.info(f"      📊 CV Accuracy: {best_score:.1%}")
+                # F1-FOCUSED Enhanced logging (F1 scores first!)
+                self.logger.info(f"\n🏆 ===== FINAL F1-FOCUSED CLINICAL EVALUATION =====")
+                self.logger.info(f"🥇 Best Model: {best_model_name}")
+                self.logger.info(f"🎯 PRIMARY METRICS (Clinical Focus):")
+                self.logger.info(f"   🔥 F1-Score (Weighted): {test_f1_weighted:.3f}")
+                self.logger.info(f"   🔥 F1-Score (Macro): {test_f1_macro:.3f}")
+                self.logger.info(f"   🔥 Precision (Weighted): {test_precision:.3f}")
+                self.logger.info(f"   🔥 Recall (Weighted): {test_recall:.3f}")
+                self.logger.info(f"📊 SECONDARY METRICS:")
+                self.logger.info(f"   📈 Accuracy: {test_accuracy:.3f}")
+                self.logger.info(f"   📈 CV F1-Score: {best_f1_score:.3f}")
                 
-                # Log per-class performance
-                if '0' in classification_report_data and '1' in classification_report_data:
-                    self.logger.info(f"   📋 Per-class performance:")
-                    for class_name, metrics in classification_report_data.items():
-                        if class_name.isdigit():
-                            cdr_value = {0: '0.0', 1: '0.5', 2: '1.0'}.get(int(class_name), class_name)
-                            f1 = metrics.get('f1-score', 0)
-                            precision = metrics.get('precision', 0)
-                            recall = metrics.get('recall', 0)
-                            support = metrics.get('support', 0)
-                            self.logger.info(f"      CDR {cdr_value}: F1={f1:.3f}, Precision={precision:.3f}, Recall={recall:.3f} (n={int(support)})")
+                # Per-class F1 performance (clinical decision support)
+                classification_report_data = prediction_results['best_model']['classification_report']
+                self.logger.info(f"🏥 PER-CLASS CLINICAL PERFORMANCE:")
+                for class_name, metrics in classification_report_data.items():
+                    if class_name.isdigit():
+                        cdr_value = {0: '0.0', 1: '0.5', 2: '1.0'}.get(int(class_name), class_name)
+                        f1 = metrics.get('f1-score', 0)
+                        precision = metrics.get('precision', 0)
+                        recall = metrics.get('recall', 0)
+                        support = metrics.get('support', 0)
+                        self.logger.info(f"   CDR {cdr_value}: F1={f1:.3f}, Prec={precision:.3f}, Rec={recall:.3f} (n={int(support)})")
+                
+                # Clinical acceptability assessment
+                clinically_acceptable = test_f1_weighted >= 0.75 and test_precision >= 0.75 and test_recall >= 0.75
+                self.logger.info(f"🏥 CLINICAL ACCEPTABILITY: {'✅ APPROVED' if clinically_acceptable else '❌ NEEDS IMPROVEMENT'}")
+                self.logger.info(f"💡 F1-FOCUSED INSIGHTS:")
+                for insight in insights:
+                    self.logger.info(f"   {insight}")
                 
             else:
                 prediction_results['error'] = 'No models successfully trained'

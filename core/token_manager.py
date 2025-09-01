@@ -155,6 +155,20 @@ class TokenManager:
         except Exception as e:
             self.logger.warning(f"Error loading usage history: {e}")
             return []
+
+    def _save_usage_history(self):
+        """Persist token usage history to outputs/token_usage.json"""
+        try:
+            os.makedirs(os.path.dirname(self.usage_log_path), exist_ok=True)
+            data = []
+            for usage in self.usage_history:
+                entry = asdict(usage)
+                entry['timestamp'] = usage.timestamp.isoformat()
+                data.append(entry)
+            with open(self.usage_log_path, 'w') as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            self.logger.warning(f"Failed to save token usage history: {e}")
     
     def _match_pricing(self, model: str) -> Optional[Dict[str, float]]:
         """Best-effort pricing match: exact key, then family prefix heuristics."""

@@ -54,6 +54,8 @@ class BrfssAdapter(BaseDatasetAdapter):
                 'LocationAbbr', 'LocationDesc', 'YearStart', 'YearEnd', 'Class', 'Topic', 'Question'
             )]
             combined = pd.concat([numeric, combined[keep_cols]], axis=1)
+            # Ensure unique column names to avoid DataFrame returns on label selection
+            combined = combined.loc[:, ~combined.columns.duplicated()]
         self.combined_data = combined
         return combined
 
@@ -67,6 +69,7 @@ class BrfssAdapter(BaseDatasetAdapter):
             'baseline_subjects': total,
             'preprocessing_steps': [
                 "BRFSS adapter: loaded CSV files per config patterns",
-                "Merged frames and retained numeric + key surveillance columns"
+                "Merged frames and retained numeric + key surveillance columns",
+                "Deduplicated duplicate-named columns"
             ]
         } 

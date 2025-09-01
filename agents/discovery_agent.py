@@ -295,6 +295,10 @@ class DataDiscoveryAgent:
             except Exception as e:
                 self.logger.warning(f"Could not analyze {file_path}: {e}")
         
+        # If no subject identifier detected, fall back to record count
+        if content_analysis['total_subjects'] == 0:
+            content_analysis['total_subjects'] = content_analysis['total_records']
+        
         self.logger.info(f"   ✅ Analyzed {content_analysis['files_analyzed']} files")
         return content_analysis
     
@@ -335,10 +339,11 @@ class DataDiscoveryAgent:
                         mapped = True
                         break
                     
-                    # Fuzzy match
+                    # Fuzzy match with minimum common substring requirement to reduce false positives
                     for possible_name in possible_names:
                         similarity = self._calculate_similarity(variable.lower(), possible_name.lower())
-                        if similarity > 0.8 and similarity > best_confidence:
+                        longest_common = self._longest_common_substring_len(variable.lower(), possible_name.lower())
+                        if similarity > 0.8 and longest_common >= 4 and similarity > best_confidence:
                             best_match = {
                                 'concept': concept_name,
                                 'category': category,
@@ -388,6 +393,20 @@ class DataDiscoveryAgent:
         total_chars = len(set1.union(set2))
         
         return overlap / total_chars if total_chars > 0 else 0.0
+
+    def _longest_common_substring_len(self, a: str, b: str) -> int:
+        """Return length of the longest common substring between two strings (O(n*m))."""
+        if not a or not b:
+            return 0
+        dp = [[0]*(len(b)+1) for _ in range(len(a)+1)]
+        best = 0
+        for i in range(1, len(a)+1):
+            for j in range(1, len(b)+1):
+                if a[i-1] == b[j-1]:
+                    dp[i][j] = dp[i-1][j-1] + 1
+                    if dp[i][j] > best:
+                        best = dp[i][j]
+        return best
     
     def _assess_data_quality(self, files_info: Dict[str, Any], 
                            variable_mappings: Dict[str, Any]) -> Dict[str, Any]:

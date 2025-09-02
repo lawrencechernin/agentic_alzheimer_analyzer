@@ -131,6 +131,7 @@ dmypy.json
 # Research data and outputs
 outputs/
 data/
+training_data/
 *.csv
 *.xlsx
 *.tsv

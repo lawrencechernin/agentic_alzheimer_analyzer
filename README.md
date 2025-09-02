@@ -232,14 +232,25 @@ This **production-grade robustness** ensures the framework works reliably with m
 ### 1. Installation
 
 ```bash
-# Clone or download the framework
+# Clone the repository
+git clone https://github.com/lawrencechernin/agentic_alzheimer_analyzer.git
 cd agentic_alzheimer_analyzer
 
 # Install dependencies
 pip install -r requirements.txt
 ```
 
-### 2. Configuration
+### 2. Download OASIS Dataset
+
+**⚠️ Important**: This repository does not include the OASIS dataset. You must download it yourself:
+
+1. **Visit Kaggle**: [https://www.kaggle.com/datasets/jboysen/mri-and-alzheimers](https://www.kaggle.com/datasets/jboysen/mri-and-alzheimers)
+2. **Download the dataset** (requires free Kaggle account)
+3. **Extract the CSV files** to `training_data/oasis/`
+
+**📋 Detailed Instructions**: See [training_data/oasis/README.md](training_data/oasis/README.md) for complete setup instructions, alternative download methods, and verification steps.
+
+### 3. Configuration
 
 **Set up API keys** (choose at least one AI provider):
 ```bash
@@ -605,15 +616,41 @@ MIT License - See LICENSE file for details.
 
 ## 🤝 Contributing
 
-We welcome contributions from the research community:
+We welcome contributions from researchers, developers, and domain experts worldwide! This project aims to democratize Alzheimer's research through collaborative open-source development.
 
-1. Fork the repository
-2. Create feature branch
-3. Add tests and documentation
-4. Submit pull request
-5. Engage in code review
+### 🚀 How to Contribute
 
-Together, we can accelerate progress toward treatments and cures for Alzheimer's disease.
+1. **Fork the repository** on GitHub
+2. **Create a feature branch**: `git checkout -b feature/your-feature-name`
+3. **Make your changes** following our guidelines
+4. **Add tests and documentation** as needed
+5. **Submit a pull request** with a clear description
+6. **Engage in code review** with maintainers and community
+
+### 🎯 Contribution Areas
+
+**High-Priority Needs:**
+- 🔥 **Dataset Adapters**: Add support for ADNI, NACC, UK Biobank, and international cohorts
+- 🧠 **Analysis Enhancements**: Longitudinal modeling, biomarker integration, advanced visualizations  
+- 📊 **Research Validation**: Cross-dataset validation, benchmark comparisons, clinical significance testing
+- 📚 **Documentation**: Tutorials, methodology guides, configuration examples
+
+**📋 Detailed Guidelines**: See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Development workflow and branch naming conventions
+- Code style guidelines and testing requirements
+- Pull request process and review timeline
+- Research contribution standards and clinical accuracy requirements
+- Community guidelines and code of conduct
+
+### 🌍 Community Impact
+
+Every contribution helps:
+- **Democratize Research**: Make advanced analysis accessible globally
+- **Accelerate Discovery**: Reduce research timelines from years to months  
+- **Improve Patient Outcomes**: Enable earlier detection and intervention
+- **Foster Open Science**: Promote transparency and reproducibility
+
+Together, we can build the world's largest open-source framework for Alzheimer's research acceleration.
 
 ---
 

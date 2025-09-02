@@ -3,14 +3,14 @@
 
 # Dataset Configuration
 dataset:
-  name: "BRFSS_Alzheimers_Healthy_Aging"
-  description: "BRFSS dataset analysis for Alzheimer's Disease and Healthy Aging surveillance data"
+  name: "OASIS_Longitudinal"
+  description: "OASIS longitudinal dataset analysis for dementia progression prediction"
   
   # Data sources (can be paths, URLs, or other data sources)
   data_sources:
-    - path: "./training_data/brfss/"
-      type: "local_directory"
-      description: "BRFSS Alzheimer's Disease and Healthy Aging surveillance data"
+    - path: "./training_data/oasis/"
+      type: "local_directory" 
+      description: "OASIS longitudinal MRI and assessment data"
     # Example of multiple data sources for future experiments:
     # - path: "../additional_cohort/data/"
     #   type: "local_directory" 
@@ -24,44 +24,43 @@ dataset:
   
   # File patterns to search for
   file_patterns:
-    brfss_surveillance_data:
-      - "Alzheimers_Disease_And_Healthy_Aging.csv"
-      - "*alzheimer*.csv"
-      - "*brfss*.csv"
-      - "*aging*.csv"
+    oasis_longitudinal:
+      - "oasis_longitudinal.csv"
+      - "*longitudinal*.csv"
+      - "*oasis*.csv"
     
-    health_data:
+    assessment_data:
       - "*.csv"
-      - "*health*.csv"
-      - "*surveillance*.csv"
+      - "*assessment*.csv"
+      - "*cognitive*.csv"
 
 # Research Goals and Experiment Configuration
 experiment:
-  name: "BRFSS_Alzheimers_Surveillance_Analysis"
-  dataset: "BRFSS_Alzheimers_Healthy_Aging"  # Links to dataset.name above
+  name: "OASIS_Longitudinal_Analysis"
+  dataset: "OASIS_Longitudinal"  # Links to dataset.name above
   
   primary_objectives:
-    - "Analyze state-level patterns in Alzheimer's disease and healthy aging indicators"
-    - "Identify regional variations in cognitive health outcomes"
-    - "Examine temporal trends in Alzheimer's disease surveillance metrics"
-    - "Correlate healthy aging indicators with Alzheimer's disease prevalence"
-    - "Assess demographic and geographic risk factors"
+    - "Predict dementia progression using longitudinal MRI and cognitive assessment data"
+    - "Identify early biomarkers and risk factors for Alzheimer's disease"
+    - "Model cognitive decline trajectories over time"
+    - "Analyze brain volume changes and cognitive correlations"
+    - "Develop predictive models for clinical decision support"
   
   secondary_analyses:
-    - "Age-stratified analysis of cognitive health indicators"
-    - "State-by-state comparison of Alzheimer's disease burden"
-    - "Temporal analysis of surveillance trends (2017-2020)"
-    - "Social determinants of health impact on cognitive outcomes"
-    - "Confidence interval analysis for surveillance estimates"
+    - "Age and gender stratified analysis of cognitive decline patterns"
+    - "Longitudinal brain volume analysis with cognitive correlation"
+    - "Assessment of ECOG self vs informant reporting patterns"  
+    - "Social and demographic factors in cognitive resilience"
+    - "Validation of cognitive assessment tools for early detection"
   
   # Specific variables of interest (will be auto-mapped from data dictionary)
   target_variables:
-    surveillance_metrics: ["Data_Value", "Data_Value_Alt", "Data_Value_Type"]
-    geographic_indicators: ["LocationAbbr", "LocationDesc", "Geolocation"]
-    temporal_variables: ["YearStart", "YearEnd"]
-    health_categories: ["Class", "Topic", "Question"]
-    confidence_intervals: ["Low_Confidence_Limit", "High_Confidence_Limit"]
-    stratification: ["StratificationCategory1", "Stratification1", "StratificationCategory2", "Stratification2"]
+    cognitive_assessments: ["CorrectResponsesRT", "PercentCorrect", "TotalResponsesN"]
+    demographics: ["age", "gender", "education", "race_ethnicity"] 
+    longitudinal: ["TimepointCode", "DaysAfterBaseline"]
+    medical_history: ["alzheimer_diagnosis", "mci_diagnosis", "memory_problems"]
+    ecog_measures: ["ecog_self_total", "ecog_informant_total"]
+    identifiers: ["SubjectCode", "StudyCode"]
 
 # AI Settings
 ai_settings:
@@ -133,13 +132,13 @@ literature_research:
   enabled: true
   max_papers_per_query: 20
   search_terms:
-    - "BRFSS Alzheimer disease surveillance data"
-    - "behavioral risk factor surveillance system cognitive health"
-    - "state level Alzheimer disease prevalence trends"
-    - "healthy aging surveillance indicators"
-    - "population based cognitive health monitoring"
-    - "geographic variation Alzheimer disease burden"
-    - "public health surveillance dementia trends"
+    - "OASIS longitudinal MRI Alzheimer disease progression"
+    - "cognitive assessment reaction time dementia prediction"
+    - "ECOG everyday cognition Alzheimer disease"
+    - "brain volume longitudinal cognitive decline"
+    - "MRI biomarkers early Alzheimer detection"
+    - "cognitive trajectory modeling dementia"
+    - "longitudinal neuroimaging cognitive assessment"
   
   databases: ["pubmed", "semantic_scholar"]  # Available: pubmed, semantic_scholar, arxiv
   

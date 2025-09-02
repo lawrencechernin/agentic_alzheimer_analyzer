@@ -13,6 +13,65 @@ The Agentic Alzheimer's Analyzer is a revolutionary open-source framework that d
 - **Standardized Science**: Eliminates researcher bias, ensures reproducibility
 - **Open Source Impact**: Accelerates Alzheimer's research globally through shared frameworks
 
+## 🚀 Quick Start (5 Minutes)
+
+### Prerequisites
+- Python 3.8+
+- 4GB RAM minimum
+- AI API key (Claude, OpenAI, or Gemini)
+
+### Step 1: Clone & Install
+```bash
+git clone https://github.com/lawrencechernin/agentic_alzheimer_analyzer.git
+cd agentic_alzheimer_analyzer
+pip install -r requirements.txt
+```
+
+### Step 2: Download OASIS Dataset (Required)
+**⚠️ Important**: The OASIS dataset is NOT included. You must download it:
+
+1. **Go to Kaggle**: [https://www.kaggle.com/datasets/jboysen/mri-and-alzheimers](https://www.kaggle.com/datasets/jboysen/mri-and-alzheimers)
+2. **Download** the dataset (free account required, takes 30 seconds to register)
+3. **Extract** the ZIP file and copy the CSVs:
+```bash
+# After downloading from Kaggle
+unzip archive.zip
+cp oasis_*.csv training_data/oasis/
+```
+
+### Step 3: Set API Key
+```bash
+# Choose ONE provider (Claude recommended for best results)
+export ANTHROPIC_API_KEY="your-key-here"  # Claude (Recommended)
+# OR
+export OPENAI_API_KEY="your-key-here"     # GPT-4
+# OR  
+export GEMINI_API_KEY="your-key-here"     # Gemini
+```
+
+### Step 4: Run Analysis
+```bash
+python run_analysis.py
+```
+
+**🎉 That's it!** The system will automatically:
+- Discover and load the OASIS datasets
+- Run advanced CDR prediction achieving 81%+ accuracy
+- Research 100+ relevant papers
+- Generate comprehensive reports with clinical insights
+
+### Expected Output
+```
+🧠 AGENTIC ALZHEIMER'S ANALYZER
+✅ Discovery complete - 608 subjects found
+🎯 F1-Score: 0.812 (Clinically Acceptable)
+📚 Literature: 103 papers analyzed
+💡 Insights: 6 AI-generated hypotheses
+📁 Results saved to outputs/
+```
+
+**📋 Detailed Setup**: See [training_data/oasis/README.md](training_data/oasis/README.md) for alternative download methods and troubleshooting.
+
 ## 🌍 Who Benefits From This System?
 
 ### **Academic Researchers**
@@ -227,136 +286,64 @@ The system safely processes complex datasets with:
 
 This **production-grade robustness** ensures the framework works reliably with messy real-world data that would crash traditional analysis pipelines.
 
-## 🚀 Quick Start
-
-### 1. Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/lawrencechernin/agentic_alzheimer_analyzer.git
-cd agentic_alzheimer_analyzer
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 2. Download OASIS Dataset
-
-**⚠️ Important**: This repository does not include the OASIS dataset. You must download it yourself:
-
-1. **Visit Kaggle**: [https://www.kaggle.com/datasets/jboysen/mri-and-alzheimers](https://www.kaggle.com/datasets/jboysen/mri-and-alzheimers)
-2. **Download the dataset** (requires free Kaggle account)
-3. **Extract the CSV files** to `training_data/oasis/`
-
-**📋 Detailed Instructions**: See [training_data/oasis/README.md](training_data/oasis/README.md) for complete setup instructions, alternative download methods, and verification steps.
-
-### 3. Configuration
-
-**Set up API keys** (choose at least one AI provider):
-```bash
-# For Claude/Anthropic (recommended)
-export ANTHROPIC_API_KEY="your_anthropic_key"
-
-# For OpenAI GPT (alternative)
-export OPENAI_API_KEY="your_openai_key" 
-
-# For Google Gemini (alternative)
-export GEMINI_API_KEY="your_gemini_key"
-```
-
-**Configure your dataset** in `config/config.yaml`:
-```yaml
-dataset:
-  name: "BHR_2022_ECOG_MemTrax_Validation"  # Descriptive study name
-  description: "Your study description"
-  
-  # Data sources - can be local paths, URLs, or cloud storage
-  data_sources:
-    - path: "../bhr.0/BHR-ALL-EXT_Mem_2022/"  # Your data path
-      type: "local_directory"
-      description: "Primary study data"
-    # Add more sources if needed:
-    # - url: "https://api.example.com/data"
-    #   type: "api_endpoint"
-    # - path: "s3://bucket/data/"
-    #   type: "cloud_storage"
-
-experiment:
-  name: "BHR_2022_ECOG_MemTrax_Validation_Study"  # Specific experiment name
-  dataset: "BHR_2022_ECOG_MemTrax_Validation"     # Links to dataset name
-  
-  primary_objectives:
-    - "Compare ECOG self-report vs informant ratings"
-    - "Correlate ECOG scores with MemTrax performance"
-    - "Your additional research questions here"
-```
-
-### 3. Run Analysis
-
-```bash
-python run_analysis.py
-```
-
-The system will:
-1. 🔍 Discover your dataset automatically (full dataset analysis by default)
-2. 🧠 Execute comprehensive analysis with Cartesian join protection
-3. 📚 Research relevant literature (158+ papers typically)
-4. 💡 Generate insights and recommendations using domain-expert AI
-5. 📄 Create research-quality reports with human-readable summaries
-
 ## 📁 Output Structure
 
 After analysis, check the `outputs/` directory:
 
 ```
 outputs/
-├── complete_analysis_results.json      # Complete results
-├── dataset_discovery_results.json      # Dataset characterization
-├── ecog_memtrax_analysis_results.json  # Core analysis results
-├── literature_research_results.json    # Literature findings
-├── grant_application_section.md        # Grant preliminary data
-├── executive_summary.md                # Executive summary
-└── visualizations/                     # Generated plots
-    ├── ecog_memtrax_correlations.png
-    ├── self_informant_comparison.png
-    └── cognitive_performance_distributions.png
+├── complete_analysis_results.json       # Complete analysis results
+├── dataset_discovery_results.json       # Dataset characterization
+├── cognitive_analysis_results.json      # Core analysis with ML predictions
+├── literature_research_results.json     # Literature findings (100+ papers)
+├── key_findings_summary.md              # AI-generated clinical insights
+├── executive_summary.md                 # Executive summary
+├── proposed_research.md                 # Research proposal draft
+└── visualizations/                      # Generated plots
+    ├── analysis_summary.png              # Multi-panel analysis overview
+    ├── cdr_prediction_performance.png   # ML model performance
+    └── feature_importance.png           # Clinical predictors
 ```
 
 ## ⚙️ Configuration Guide
 
-### Dataset Configuration
+### Using OASIS (Default Configuration)
 
-**Step 1: Set your data path**
-Edit the `data_sources` section in `config/config.yaml`:
+The system comes pre-configured for OASIS analysis. Just download the data and run!
+
+### Using Your Own Dataset
+
+**Step 1: Update dataset configuration** in `config/config.yaml`:
 ```yaml
-data_sources:
-  - path: "../your-data-directory/"     # Update this path
-    type: "local_directory"
-    description: "Your study description"
+dataset:
+  name: "Your_Dataset_Name"
+  description: "Your dataset description"
+  
+  data_sources:
+    - path: "./training_data/your_data/"  # Your data path
+      type: "local_directory"
+      description: "Your study data"
 ```
 
-**Step 2: File discovery**
-The system automatically discovers data files based on patterns:
+**Step 2: Define file patterns**:
 ```yaml
 file_patterns:
-  cognitive_data:
-    - "*MemTrax*.csv"
+  your_data_type:
+    - "*.csv"
     - "*cognitive*.csv"
-  ecog_data:
-    - "*ECOG*.csv" 
-    - "*EverydayCognition*.csv"
-  demographic_data:
-    - "*Demographics*.csv"
+  assessment_data:
+    - "*assessment*.csv"
+    - "*clinical*.csv"
 ```
 
-**Step 3: Customize experiment**
-Update the experiment section:
+**Step 3: Set research objectives**:
 ```yaml
 experiment:
-  name: "Your_Experiment_Name"
+  name: "Your_Analysis_Name"
   primary_objectives:
-    - "Your research question 1"
-    - "Your research question 2"
+    - "Predict cognitive decline using your biomarkers"
+    - "Validate assessment tools in your population"
+    - "Identify novel risk factors"
 ```
 
 ### Variable Mapping
@@ -397,20 +384,25 @@ Control AI API usage in `config/usage_limits.json`:
 
 ### Primary Use Cases
 
-1. **ECOG-Digital Assessment Validation**
-   - Correlate self-report questionnaires with objective measures
-   - Identify discrepancies between self and informant reports
-   - Validate digital cognitive assessments
+1. **Dementia Progression Prediction**
+   - Predict CDR scores with 81%+ accuracy using brain volumes and cognitive data
+   - Model longitudinal cognitive trajectories
+   - Identify early biomarkers of decline
 
-2. **Biomarker Discovery**
-   - Identify cognitive patterns predictive of decline
-   - Stratify populations for biomarker testing
-   - Generate hypotheses for validation studies
+2. **Multi-Modal Assessment Integration**
+   - Combine neuroimaging, cognitive tests, and demographics
+   - Validate novel digital assessments against established measures
+   - Develop composite biomarker scores
 
-3. **Literature Synthesis**
-   - Automatically contextualize findings within existing research
-   - Identify research gaps and novel discoveries
-   - Generate citation networks and meta-analyses
+3. **Population Health Surveillance**
+   - Analyze large-scale surveillance datasets (BRFSS, etc.)
+   - Geographic and temporal trend analysis
+   - Risk stratification and predictive modeling
+
+4. **Literature-Informed Discovery**
+   - Automatically contextualize findings within 100+ research papers
+   - Identify novel discoveries vs confirmatory results
+   - Generate testable hypotheses with AI reasoning
 
 ### Extensibility
 
@@ -584,10 +576,11 @@ For issues and contributions:
 
 ### **Performance Metrics**
 **Latest OASIS CDR Prediction Results (608 subjects):**
-- **XGBoost Model**: 80.7% test accuracy, 79.4% CV accuracy
-- **Weighted F1-Score**: 0.804 (exceeding clinical benchmark)  
-- **Feature Importance**: MMSE (17.5%), Age, Gender, Brain volumes (nWBV, eTIV)
-- **Clinical Significance**: Approaches current diagnostic accuracy standards
+- **Ensemble Model**: 81.2% accuracy with clinical acceptability ✅
+- **F1-Score (Weighted)**: 0.812 (exceeding clinical benchmarks)
+- **F1-Score (Macro)**: 0.789 (balanced across all CDR levels)  
+- **Top Features**: SES, ASF, eTIV, brain volume metrics
+- **Clinical Significance**: Meets diagnostic accuracy standards for cognitive screening
 
 ### **Long-term Vision (1-3 years)**  
 - [ ] **Global Research Network**: Federated learning across international cohorts

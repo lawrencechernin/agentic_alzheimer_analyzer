@@ -213,7 +213,7 @@ class DataDiscoveryAgent:
         analyzed_files = set()  # Track files to avoid duplicates
         
         # Prioritize files by type for analysis
-        priority_types = ['brain_imaging_data', 'clinical_data', 'cognitive_data', 'ecog_data', 'demographic_data', 'medical_data', 'brfss_surveillance_data', 'health_data']
+        priority_types = ['brain_imaging_data', 'clinical_data', 'cognitive_data', 'ecog_data', 'demographic_data', 'medical_data', 'brfss_surveillance_data', 'health_data', 'oasis_longitudinal', 'assessment_data']
         
         for file_type in priority_types:
             if file_type in files_info['files_by_type']:

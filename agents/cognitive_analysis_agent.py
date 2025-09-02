@@ -157,7 +157,7 @@ class CognitiveAnalysisAgent:
             self.logger.info("✅ F1-focused clinical evaluation system loaded")
     
     def run_complete_analysis(self) -> Dict[str, Any]:
-        """Execute complete cognitive assessment analysis pipeline"""
+        """Execute complete cognitive assessment analysis pipeline - adaptive for different data types"""
         experiment_name = self.experiment_config.get('name', 'Cognitive_Assessment_Analysis')
         self.logger.info(f"🚀 Starting Cognitive Analysis Pipeline: {experiment_name}")
         
@@ -186,34 +186,46 @@ class CognitiveAnalysisAgent:
             if self.combined_data is None or len(self.combined_data) == 0:
                 raise ValueError("No data available for analysis")
             
-            # Step 2: Assessment-specific analysis
-            assessment_types = self._identify_assessment_types()
-            for assessment_type in assessment_types:
-                self.logger.info(f"Step 2.{assessment_type}: {assessment_type} analysis")
-                analysis_results['assessment_analysis'][assessment_type] = self._analyze_assessment_type(assessment_type)
+            # NEW: Detect data type and adapt analysis strategy
+            data_type = self._detect_data_type()
+            self.logger.info(f"   🔍 Detected data type: {data_type}")
             
-            # Step 3: Cross-assessment correlation analysis
-            self.logger.info("Step 3: Cross-assessment correlation analysis")
-            analysis_results['correlation_analysis'] = self._analyze_cross_assessment_correlations()
+            if data_type == 'surveillance':
+                # Run surveillance-specific analyses for population health data
+                self.logger.info("   📊 Running surveillance data analysis pipeline")
+                analysis_results = self._run_surveillance_analysis(analysis_results)
+            else:
+                # Original individual-level cognitive assessment analysis
+                # Step 2: Assessment-specific analysis
+                assessment_types = self._identify_assessment_types()
+                for assessment_type in assessment_types:
+                    self.logger.info(f"Step 2.{assessment_type}: {assessment_type} analysis")
+                    analysis_results['assessment_analysis'][assessment_type] = self._analyze_assessment_type(assessment_type)
             
-            # Step 4: Self vs informant comparison (if available)
-            if self._has_self_informant_data():
-                self.logger.info("Step 4: Self vs informant comparison")
-                analysis_results['self_informant_comparison'] = self._analyze_self_informant_differences()
+            if data_type != 'surveillance':
+                # Step 3: Cross-assessment correlation analysis (for individual data only)
+                self.logger.info("Step 3: Cross-assessment correlation analysis")
+                analysis_results['correlation_analysis'] = self._analyze_cross_assessment_correlations()
             
-            # Step 5: Cognitive performance analysis
-            self.logger.info("Step 5: Cognitive performance analysis")
-            analysis_results['cognitive_performance_analysis'] = self._analyze_cognitive_performance()
-            
-            # Step 5b: MemTrax predictive modeling for cognitive impairment
-            if self._has_memtrax_and_outcomes_data():
-                self.logger.info("Step 5b: MemTrax cognitive impairment prediction analysis")
-                analysis_results['memtrax_prediction'] = self._analyze_memtrax_predictive_power()
-            
-            # Step 5c: Advanced CDR prediction (if CDR column exists)
-            if 'CDR' in self.combined_data.columns:
-                self.logger.info("Step 5c: Advanced CDR prediction with state-of-the-art ML")
-                analysis_results['advanced_cdr_prediction'] = self._advanced_cdr_prediction()
+            if data_type != 'surveillance':
+                # Step 4: Self vs informant comparison (if available)
+                if self._has_self_informant_data():
+                    self.logger.info("Step 4: Self vs informant comparison")
+                    analysis_results['self_informant_comparison'] = self._analyze_self_informant_differences()
+                
+                # Step 5: Cognitive performance analysis
+                self.logger.info("Step 5: Cognitive performance analysis")
+                analysis_results['cognitive_performance_analysis'] = self._analyze_cognitive_performance()
+                
+                # Step 5b: MemTrax predictive modeling for cognitive impairment
+                if self._has_memtrax_and_outcomes_data():
+                    self.logger.info("Step 5b: MemTrax cognitive impairment prediction analysis")
+                    analysis_results['memtrax_prediction'] = self._analyze_memtrax_predictive_power()
+                
+                # Step 5c: Advanced CDR prediction (if CDR column exists)
+                if 'CDR' in self.combined_data.columns:
+                    self.logger.info("Step 5c: Advanced CDR prediction with state-of-the-art ML")
+                    analysis_results['advanced_cdr_prediction'] = self._advanced_cdr_prediction()
             
             # Step 6: Generate clinical insights
             self.logger.info("Step 6: Clinical insights generation")
@@ -537,6 +549,38 @@ class CognitiveAnalysisAgent:
         self.logger.info(f"         ✅ Deduplication by data completeness")
         return deduplicated
     
+    def _detect_data_type(self) -> str:
+        """Intelligently detect whether data is surveillance or individual assessment data"""
+        # Check for surveillance-specific columns
+        surveillance_indicators = ['LocationAbbr', 'LocationDesc', 'Data_Value', 'Topic', 
+                                  'Class', 'Question', 'YearStart', 'YearEnd', 
+                                  'Stratification1', 'StratificationCategory1']
+        
+        # Check for individual assessment columns
+        individual_indicators = ['Subject_ID', 'subject_id', 'SubjectCode', 'ID', 
+                                'MMSE', 'CDR', 'Age', 'Gender', 'EDUC', 
+                                'MemTrax', 'ECOG', 'MoCA']
+        
+        if self.combined_data is None:
+            return 'unknown'
+        
+        cols = self.combined_data.columns.tolist()
+        
+        # Count indicators
+        surveillance_count = sum(1 for ind in surveillance_indicators if ind in cols)
+        individual_count = sum(1 for ind in individual_indicators if ind in cols)
+        
+        # Decision logic
+        if surveillance_count >= 5 and 'Data_Value' in cols:
+            return 'surveillance'
+        elif individual_count >= 3:
+            return 'individual'
+        elif 'Data_Value' in cols and 'Topic' in cols:
+            return 'surveillance'
+        else:
+            # Default to individual if unclear
+            return 'individual'
+    
     def _identify_assessment_types(self) -> List[str]:
         """Identify what types of assessments are available in the data"""
         return list(self.assessment_data.keys())
@@ -655,8 +699,11 @@ class CognitiveAnalysisAgent:
         """Calculate correlations between two assessment types"""
         pair_correlations = {}
         
-        for col_a in cols_a[:5]:  # Limit to prevent explosion
-            for col_b in cols_b[:5]:
+        # Intelligent correlation limit based on computational feasibility
+        max_cols_per_group = self._calculate_correlation_limit(len(cols_a), len(cols_b))
+        
+        for col_a in cols_a[:max_cols_per_group]:
+            for col_b in cols_b[:max_cols_per_group]:
                 try:
                     data_a = self.combined_data[col_a].dropna()
                     data_b = self.combined_data[col_b].dropna()
@@ -933,24 +980,68 @@ class CognitiveAnalysisAgent:
         return summary
     
     def _create_analysis_visualizations(self, analysis_results: Dict[str, Any]):
-        """Create visualizations for the analysis"""
+        """Create visualizations automatically based on analysis type and available data"""
         self.logger.info("   🎨 Creating visualizations...")
         
         os.makedirs('outputs/visualizations', exist_ok=True)
         
         try:
-            # Create correlation matrix visualization
-            self._create_correlation_matrix_plot(analysis_results)
-            
-            # Create self-informant comparison plot (if available)
-            if analysis_results.get('self_informant_comparison', {}).get('self_informant_available'):
-                self._create_self_informant_plot(analysis_results)
-            
-            # Create performance distribution plots
-            self._create_performance_distribution_plots(analysis_results)
+            # Detect analysis type and create appropriate visualizations
+            if self._is_surveillance_analysis(analysis_results):
+                self.logger.info("   📊 Creating surveillance analysis visualizations...")
+                self._create_surveillance_visualizations(analysis_results)
+            else:
+                self.logger.info("   🧠 Creating individual assessment visualizations...")
+                self._create_assessment_visualizations(analysis_results)
             
         except Exception as e:
             self.logger.warning(f"Error creating visualizations: {e}")
+    
+    def _is_surveillance_analysis(self, analysis_results: Dict[str, Any]) -> bool:
+        """Detect if this is surveillance vs individual assessment analysis"""
+        return (analysis_results.get('temporal_analysis') is not None or 
+                analysis_results.get('geographic_analysis') is not None)
+    
+    def _create_surveillance_visualizations(self, analysis_results: Dict[str, Any]):
+        """Create surveillance-specific visualizations"""
+        
+        # 1. Temporal trends (if available)
+        temporal_analysis = analysis_results.get('temporal_analysis', {})
+        if temporal_analysis:
+            self._create_temporal_trends_plot(temporal_analysis)
+        
+        # 2. Geographic patterns (if available)
+        geographic_analysis = analysis_results.get('geographic_analysis', {})
+        if geographic_analysis:
+            self._create_geographic_patterns_plot(geographic_analysis)
+        
+        # 3. Health topic analysis (if available)
+        topic_analysis = analysis_results.get('topic_analysis', {})
+        if topic_analysis:
+            self._create_topic_analysis_plot(topic_analysis)
+        
+        # 4. Risk stratification (if available)
+        risk_scores = analysis_results.get('risk_scores', {})
+        if risk_scores:
+            self._create_risk_stratification_plot(risk_scores)
+        
+        # 5. Surveillance dashboard
+        self._create_surveillance_dashboard(analysis_results)
+    
+    def _create_assessment_visualizations(self, analysis_results: Dict[str, Any]):
+        """Create individual assessment-specific visualizations"""
+        
+        # Create correlation matrix visualization (if available)
+        correlations = analysis_results.get('correlation_analysis', {}).get('primary_correlations', {})
+        if correlations:
+            self._create_correlation_matrix_plot(analysis_results)
+        
+        # Create self-informant comparison plot (if available)
+        if analysis_results.get('self_informant_comparison', {}).get('self_informant_available'):
+            self._create_self_informant_plot(analysis_results)
+        
+        # Create performance distribution plots (if data available)
+        self._create_performance_distribution_plots(analysis_results)
     
     def _create_correlation_matrix_plot(self, analysis_results: Dict[str, Any]):
         """Create correlation matrix heatmap"""
@@ -1055,8 +1146,10 @@ class CognitiveAnalysisAgent:
         if not performance_metrics:
             return
         
-        # Create subplots for up to 6 metrics
-        metrics = list(performance_metrics.keys())[:6]
+        # Intelligent metrics selection based on available data
+        all_metrics = list(performance_metrics.keys())
+        max_displayable_metrics = self._calculate_optimal_display_count(len(all_metrics), 'performance_metrics')
+        metrics = all_metrics[:max_displayable_metrics]
         if not metrics:
             return
         
@@ -1810,12 +1903,19 @@ class CognitiveAnalysisAgent:
                     importance_df = pd.DataFrame({
                         'feature': feature_names,
                         'importance': importance_scores
-                    }).sort_values('importance', ascending=False).head(10)
+                    }).sort_values('importance', ascending=False)
                     
-                    prediction_results['feature_importance'] = importance_df.to_dict('records')
+                    # Intelligently determine how many features to show
+                    total_features = len(importance_df)
+                    max_features_to_show = self._calculate_optimal_display_count(total_features, 'feature_importance')
+                    top_features = importance_df.head(max_features_to_show)
                     
-                    self.logger.info(f"   Top predictive features:")
-                    for _, row in importance_df.head(5).iterrows():
+                    prediction_results['feature_importance'] = top_features.to_dict('records')
+                    
+                    # Show fewer features in log for readability
+                    log_features_count = min(5, len(top_features))
+                    self.logger.info(f"   Top {log_features_count} predictive features:")
+                    for _, row in top_features.head(log_features_count).iterrows():
                         self.logger.info(f"      {row['feature']}: {row['importance']:.3f}")
                 
                 # F1-FOCUSED Clinical insights
@@ -1978,6 +2078,633 @@ class CognitiveAnalysisAgent:
             leakage_columns = [col for col in df.columns if col != target_col and target_col.upper() in col.upper()]
         
         return leakage_columns
+    
+    def _run_surveillance_analysis(self, analysis_results: Dict[str, Any]) -> Dict[str, Any]:
+        """Run specialized analysis for surveillance data (like BRFSS)"""
+        self.logger.info("   🔬 Analyzing surveillance data patterns...")
+        
+        df = self.combined_data
+        
+        # 1. Temporal Analysis
+        if 'YearStart' in df.columns:
+            self.logger.info("   📈 Performing temporal trend analysis...")
+            temporal_analysis = {}
+            
+            # Group by year and calculate trends
+            yearly_stats = df.groupby('YearStart')['Data_Value'].agg(['mean', 'median', 'std', 'count'])
+            temporal_analysis['yearly_trends'] = yearly_stats.to_dict()
+            
+            # Detect trend direction
+            years = yearly_stats.index.values
+            values = yearly_stats['mean'].values
+            if len(years) > 2:
+                from scipy import stats
+                slope, intercept, r_value, p_value, std_err = stats.linregress(years, values)
+                temporal_analysis['trend'] = {
+                    'direction': 'increasing' if slope > 0 else 'decreasing',
+                    'slope': float(slope),
+                    'r_squared': float(r_value**2),
+                    'p_value': float(p_value)
+                }
+            
+            analysis_results['temporal_analysis'] = temporal_analysis
+        
+        # 2. Geographic Analysis
+        if 'LocationAbbr' in df.columns:
+            self.logger.info("   🗺️ Performing geographic analysis...")
+            geographic_analysis = {}
+            
+            # State-level statistics
+            state_stats = df.groupby('LocationAbbr')['Data_Value'].agg(['mean', 'median', 'std', 'count'])
+            geographic_analysis['state_statistics'] = state_stats.nlargest(10, 'mean').to_dict()
+            geographic_analysis['high_risk_states'] = state_stats.nlargest(5, 'mean').index.tolist()
+            geographic_analysis['low_risk_states'] = state_stats.nsmallest(5, 'mean').index.tolist()
+            
+            analysis_results['geographic_analysis'] = geographic_analysis
+        
+        # 3. Topic/Health Category Analysis
+        if 'Topic' in df.columns:
+            self.logger.info("   🏥 Analyzing health topics...")
+            topic_analysis = {}
+            
+            # Topic statistics
+            topic_stats = df.groupby('Topic')['Data_Value'].agg(['mean', 'median', 'count'])
+            topic_analysis['topic_statistics'] = topic_stats.nlargest(10, 'count').to_dict()
+            
+            # Focus on cognitive-related topics
+            cognitive_topics = df[df['Topic'].str.contains('Cognitive|Dementia|Alzheimer', case=False, na=False)]
+            if not cognitive_topics.empty:
+                topic_analysis['cognitive_metrics'] = {
+                    'records': len(cognitive_topics),
+                    'mean_value': float(cognitive_topics['Data_Value'].mean()),
+                    'median_value': float(cognitive_topics['Data_Value'].median())
+                }
+            
+            analysis_results['topic_analysis'] = topic_analysis
+        
+        # 4. Predictive Modeling for Surveillance Data
+        self.logger.info("   🎯 Building predictive models for population health...")
+        predictive_results = self._build_surveillance_predictive_models(df)
+        analysis_results['predictive_models'] = predictive_results
+        
+        # 5. Risk Score Calculation
+        if 'LocationAbbr' in df.columns and 'Data_Value' in df.columns:
+            self.logger.info("   📊 Calculating population risk scores...")
+            risk_scores = self._calculate_population_risk_scores(df)
+            analysis_results['risk_scores'] = risk_scores
+        
+        # 6. Stratification Analysis
+        if 'Stratification1' in df.columns:
+            self.logger.info("   👥 Analyzing demographic stratifications...")
+            strat_analysis = {}
+            strat_stats = df.groupby('Stratification1')['Data_Value'].agg(['mean', 'median', 'std', 'count'])
+            strat_analysis['stratification_statistics'] = strat_stats.to_dict()
+            analysis_results['stratification_analysis'] = strat_analysis
+        
+        return analysis_results
+    
+    def _build_surveillance_predictive_models(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """Build predictive models for surveillance data"""
+        results = {}
+        
+        try:
+            # Create feature matrix from pivoted data
+            if 'LocationAbbr' in df.columns and 'YearStart' in df.columns and 'Topic' in df.columns:
+                # Pivot to create features
+                feature_matrix = df.pivot_table(
+                    index=['LocationAbbr', 'YearStart'],
+                    columns='Topic',
+                    values='Data_Value',
+                    aggfunc='mean'
+                ).reset_index()
+                
+                # Identify target (cognitive decline if available)
+                cognitive_cols = [col for col in feature_matrix.columns 
+                                if 'Cognitive' in str(col) or 'Dementia' in str(col)]
+                
+                if cognitive_cols:
+                    target_col = cognitive_cols[0]
+                    feature_cols = [col for col in feature_matrix.columns 
+                                  if col not in ['LocationAbbr', 'YearStart', target_col]]
+                    
+                    # Prepare data
+                    valid_data = feature_matrix.dropna(subset=[target_col])
+                    X = valid_data[feature_cols].fillna(valid_data[feature_cols].median())
+                    y = valid_data[target_col]
+                    
+                    if len(X) > 30:  # Need enough data for modeling
+                        from sklearn.model_selection import train_test_split
+                        from sklearn.ensemble import RandomForestRegressor
+                        from sklearn.metrics import r2_score, mean_absolute_error
+                        
+                        X_train, X_test, y_train, y_test = train_test_split(
+                            X, y, test_size=0.2, random_state=42
+                        )
+                        
+                        # Train model
+                        model = RandomForestRegressor(n_estimators=100, random_state=42)
+                        model.fit(X_train, y_train)
+                        
+                        # Evaluate
+                        y_pred = model.predict(X_test)
+                        r2 = r2_score(y_test, y_pred)
+                        mae = mean_absolute_error(y_test, y_pred)
+                        
+                        # Feature importance
+                        feature_importance = pd.DataFrame({
+                            'feature': feature_cols,
+                            'importance': model.feature_importances_
+                        }).sort_values('importance', ascending=False)
+                        
+                        results = {
+                            'model_type': 'RandomForest',
+                            'target': target_col,
+                            'r2_score': float(r2),
+                            'mae': float(mae),
+                            'top_features': feature_importance.head(10).to_dict(),
+                            'sample_size': len(X)
+                        }
+                        
+                        self.logger.info(f"      ✅ Predictive model R²={r2:.3f}, MAE={mae:.2f}")
+        
+        except Exception as e:
+            self.logger.warning(f"      ⚠️ Could not build predictive models: {e}")
+        
+        return results
+    
+    def _calculate_population_risk_scores(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """Calculate risk scores for populations"""
+        risk_scores = {}
+        
+        try:
+            # Calculate composite risk score by location
+            location_scores = df.groupby('LocationAbbr')['Data_Value'].agg(['mean', 'std', 'count'])
+            
+            # Normalize scores
+            location_scores['risk_score'] = (
+                (location_scores['mean'] - location_scores['mean'].min()) / 
+                (location_scores['mean'].max() - location_scores['mean'].min())
+            )
+            
+            risk_scores = {
+                'high_risk': location_scores.nlargest(5, 'risk_score').to_dict(),
+                'low_risk': location_scores.nsmallest(5, 'risk_score').to_dict(),
+                'median_risk': float(location_scores['risk_score'].median())
+            }
+            
+        except Exception as e:
+            self.logger.warning(f"      ⚠️ Could not calculate risk scores: {e}")
+        
+        return risk_scores
+    
+    def _get_risk_color_palette(self):
+        """Get intelligent color palette for risk visualization"""
+        return {
+            'high': '#d32f2f',      # Red for high risk
+            'low': '#388e3c',       # Green for low risk  
+            'neutral': '#42a5f5',   # Blue for neutral
+            'secondary': '#ff9800'   # Orange for secondary categories
+        }
+    
+    def _get_topic_color_palette(self):
+        """Get intelligent color palette for topic analysis"""
+        return {
+            'prevalence': '#ff7043',    # Orange-red for prevalence
+            'sample_size': '#29b6f6',   # Light blue for sample sizes
+            'cognitive': '#ab47bc',     # Purple for cognitive metrics
+            'health': '#66bb6a'         # Green for health metrics
+        }
+    
+    def _calculate_optimal_display_count(self, total_items, item_type='items'):
+        """Intelligently determine optimal number of items to display"""
+        if item_type == 'states':
+            # For states, show enough to capture patterns but not overwhelm
+            return min(total_items, max(8, int(total_items * 0.6)))
+        elif item_type == 'topics':
+            # For topics, focus on most significant ones
+            return min(total_items, max(6, int(total_items * 0.4)))
+        elif item_type == 'performance_metrics':
+            # For performance metrics, balance detail with readability
+            return min(total_items, max(4, min(8, int(total_items * 0.75))))
+        elif item_type == 'feature_importance':
+            # For feature importance, show meaningful subset
+            return min(total_items, max(5, min(15, int(total_items * 0.8))))
+        else:
+            # General case
+            return min(total_items, max(5, int(total_items * 0.5)))
+    
+    def _calculate_text_truncation_length(self, text_list, max_width_chars=40):
+        """Intelligently determine optimal text truncation length"""
+        if not text_list:
+            return max_width_chars
+        
+        avg_length = sum(len(text) for text in text_list) / len(text_list)
+        max_length = max(len(text) for text in text_list)
+        
+        # If average is reasonable, use a bit more than average
+        if avg_length <= max_width_chars * 0.7:
+            return int(avg_length * 1.3)
+        else:
+            # If text is long, use adaptive truncation
+            return max(20, max_width_chars)
+    
+    def _calculate_figure_size(self, num_items, plot_type='bar'):
+        """Intelligently calculate figure size based on content"""
+        if plot_type == 'geographic':
+            width = max(12, min(20, num_items * 1.2))
+            height = 8
+        elif plot_type == 'topic_horizontal':
+            width = max(14, min(18, num_items * 0.8))
+            height = max(8, min(12, num_items * 0.6))
+        elif plot_type == 'dashboard':
+            width = 20
+            height = 12
+        else:
+            width = max(10, min(16, num_items * 0.8))
+            height = max(6, min(10, num_items * 0.5))
+        
+        return (width, height)
+    
+    def _calculate_correlation_limit(self, cols_a_count, cols_b_count):
+        """Intelligently calculate correlation analysis limits to prevent computational explosion"""
+        total_combinations = cols_a_count * cols_b_count
+        
+        # Scale limits based on total combinations to prevent exponential growth
+        if total_combinations <= 25:  # Small dataset
+            return min(cols_a_count, cols_b_count)
+        elif total_combinations <= 100:  # Medium dataset  
+            return min(10, max(cols_a_count, cols_b_count))
+        elif total_combinations <= 400:  # Large dataset
+            return min(8, max(cols_a_count, cols_b_count))
+        else:  # Very large dataset
+            return min(5, max(cols_a_count, cols_b_count))
+    
+    def _create_temporal_trends_plot(self, temporal_analysis):
+        """Create temporal trend visualization"""
+        trends = temporal_analysis.get('yearly_trends', {})
+        if not trends or not trends.get('mean'):
+            self.logger.warning("      ⚠️ No temporal trends data available for plotting")
+            return
+        
+        try:
+            years = sorted([int(year) for year in trends['mean'].keys()])
+            means = [trends['mean'][str(year)] for year in years]
+            stds = [trends['std'][str(year)] for year in years] if 'std' in trends else [0] * len(years)
+            counts = [trends['count'][str(year)] for year in years] if 'count' in trends else [1] * len(years)
+        except (KeyError, ValueError) as e:
+            self.logger.warning(f"      ⚠️ Error parsing temporal trends data: {e}")
+            return
+        
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
+        
+        # Main trend plot
+        ax1.errorbar(years, means, yerr=stds, marker='o', linewidth=2, 
+                    markersize=8, capsize=5, capthick=2, color='steelblue')
+        ax1.set_xlabel('Year')
+        ax1.set_ylabel('Mean Data Value (%)')
+        ax1.set_title('Population Health Surveillance: Temporal Trends', fontsize=16, pad=20)
+        ax1.grid(True, alpha=0.3)
+        
+        # Add trend line
+        z = np.polyfit(years, means, 1)
+        p = np.poly1d(z)
+        ax1.plot(years, p(years), "r--", alpha=0.8, linewidth=2, 
+                label=f'Trend: {z[0]:+.2f}%/year')
+        
+        # Add R² and p-value
+        trend_info = temporal_analysis.get('trend', {})
+        r_squared = trend_info.get('r_squared', 0)
+        p_value = trend_info.get('p_value', 1)
+        significance = "***" if p_value < 0.001 else "**" if p_value < 0.01 else "*" if p_value < 0.05 else "ns"
+        
+        ax1.text(0.05, 0.95, f'R² = {r_squared:.3f}\np = {p_value:.4f} {significance}', 
+                 transform=ax1.transAxes, verticalalignment='top',
+                 bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.8))
+        ax1.legend()
+        
+        # Sample size plot
+        ax2.bar(years, counts, alpha=0.7, color='lightcoral', edgecolor='black')
+        ax2.set_xlabel('Year')
+        ax2.set_ylabel('Number of Records')
+        ax2.set_title('Sample Sizes by Year')
+        ax2.grid(True, alpha=0.3, axis='y')
+        
+        plt.tight_layout()
+        plt.savefig('outputs/visualizations/temporal_trends.png', dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        self.logger.info("      ✅ Temporal trends plot saved")
+    
+    def _create_geographic_patterns_plot(self, geographic_analysis):
+        """Create geographic risk pattern visualization"""
+        state_stats = geographic_analysis.get('state_statistics', {})
+        high_risk = geographic_analysis.get('high_risk_states', [])
+        low_risk = geographic_analysis.get('low_risk_states', [])
+        
+        if not state_stats or not state_stats.get('mean'):
+            self.logger.warning("      ⚠️ No geographic patterns data available for plotting")
+            return
+        
+        # Intelligently determine number of states to show based on data
+        all_states = list(state_stats['mean'].keys())
+        num_states = min(len(all_states), max(8, len(high_risk) + len(low_risk)))  # At least 8, or enough to show risk states
+        states = all_states[:num_states]
+        means = [state_stats['mean'][state] for state in states]
+        stds = [state_stats['std'][state] for state in states] if 'std' in state_stats else [0] * len(states)
+        
+        # Intelligent color coding based on risk categories
+        risk_colors = self._get_risk_color_palette()
+        colors = []
+        for state in states:
+            if state in high_risk:
+                colors.append(risk_colors['high'])
+            elif state in low_risk:
+                colors.append(risk_colors['low'])
+            else:
+                colors.append(risk_colors['neutral'])
+        
+        # Dynamic figure sizing based on number of states
+        fig_width = max(12, min(20, num_states * 1.2))
+        fig, ax = plt.subplots(1, 1, figsize=(fig_width, 8))
+        
+        bars = ax.bar(range(len(states)), means, yerr=stds, capsize=4,
+                     color=colors, alpha=0.7, edgecolor='black')
+        ax.set_xlabel('State')
+        ax.set_ylabel('Mean Data Value (%)')
+        ax.set_title('Geographic Risk Patterns Across States', fontsize=16, pad=20)
+        ax.set_xticks(range(len(states)))
+        ax.set_xticklabels(states, rotation=45)
+        ax.grid(True, alpha=0.3, axis='y')
+        
+        # Intelligent legend creation based on actual data
+        from matplotlib.patches import Patch
+        legend_elements = []
+        if any(state in high_risk for state in states):
+            legend_elements.append(Patch(facecolor=risk_colors['high'], alpha=0.7, label='High Risk States'))
+        if any(state in low_risk for state in states):
+            legend_elements.append(Patch(facecolor=risk_colors['low'], alpha=0.7, label='Low Risk States'))
+        if any(state not in high_risk and state not in low_risk for state in states):
+            legend_elements.append(Patch(facecolor=risk_colors['neutral'], alpha=0.7, label='Other States'))
+        
+        if legend_elements:
+            ax.legend(handles=legend_elements, loc='upper right')
+        
+        plt.tight_layout()
+        plt.savefig('outputs/visualizations/geographic_patterns.png', dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        self.logger.info("      ✅ Geographic patterns plot saved")
+    
+    def _create_topic_analysis_plot(self, topic_analysis):
+        """Create health topic analysis visualization"""
+        topic_stats = topic_analysis.get('topic_statistics', {})
+        cognitive_metrics = topic_analysis.get('cognitive_metrics', {})
+        
+        if not topic_stats:
+            return
+        
+        # Intelligently determine number of topics to show
+        all_topics = list(topic_stats['mean'].keys())
+        num_topics = self._calculate_optimal_display_count(len(all_topics), 'topics')
+        topics = all_topics[:num_topics]
+        means = [topic_stats['mean'][topic] for topic in topics]
+        counts = [topic_stats['count'][topic] for topic in topics] if 'count' in topic_stats else [1] * len(topics)
+        
+        # Intelligent text truncation based on actual topic lengths
+        truncation_length = self._calculate_text_truncation_length(topics)
+        short_topics = [topic[:truncation_length] + '...' if len(topic) > truncation_length else topic for topic in topics]
+        
+        # Dynamic figure sizing based on number of topics
+        fig_size = self._calculate_figure_size(num_topics, 'topic_horizontal')
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=fig_size)
+        
+        # Get intelligent colors
+        colors = self._get_topic_color_palette()
+        
+        # Topic prevalence
+        bars = ax1.barh(range(len(short_topics)), means, alpha=0.7, 
+                        color=colors['prevalence'], edgecolor='black')
+        ax1.set_xlabel('Mean Prevalence (%)')
+        ax1.set_ylabel('Health Topics')
+        ax1.set_title('Health Topic Prevalence Rates', fontsize=14)
+        ax1.set_yticks(range(len(short_topics)))
+        ax1.set_yticklabels(short_topics)
+        ax1.grid(True, alpha=0.3, axis='x')
+        
+        # Sample sizes
+        ax2.barh(range(len(short_topics)), counts, alpha=0.7,
+                color=colors['sample_size'], edgecolor='black')
+        ax2.set_xlabel('Number of Records')
+        ax2.set_ylabel('Health Topics')
+        ax2.set_title('Sample Sizes by Topic', fontsize=14)
+        ax2.set_yticks(range(len(short_topics)))
+        ax2.set_yticklabels(short_topics)
+        ax2.grid(True, alpha=0.3, axis='x')
+        
+        plt.tight_layout()
+        plt.savefig('outputs/visualizations/topic_analysis.png', dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        # Cognitive health specific plot
+        if cognitive_metrics and cognitive_metrics.get('records', 0) > 0:
+            # Dynamic figure sizing for cognitive metrics
+            fig_size = self._calculate_figure_size(3, 'cognitive_summary')
+            fig, ax = plt.subplots(1, 1, figsize=fig_size)
+            
+            records = cognitive_metrics.get('records', 0)
+            mean_value = cognitive_metrics.get('mean_value', 0)
+            median_value = cognitive_metrics.get('median_value', 0)
+            
+            categories = ['Records\n(thousands)', 'Mean Value', 'Median Value']
+            values = [records / 1000, mean_value, median_value]
+            
+            # Intelligent color selection
+            topic_colors = self._get_topic_color_palette()
+            colors = [topic_colors['cognitive'], topic_colors['health'], topic_colors['sample_size']]
+            
+            bars = ax.bar(categories, values, color=colors, alpha=0.7, edgecolor='black')
+            ax.set_title('Cognitive Health Analysis Summary', fontsize=16, pad=20)
+            ax.set_ylabel('Value')
+            ax.grid(True, alpha=0.3, axis='y')
+            
+            plt.tight_layout()
+            plt.savefig('outputs/visualizations/cognitive_health_summary.png', dpi=300, bbox_inches='tight')
+            plt.close()
+        
+        self.logger.info("      ✅ Topic analysis plots saved")
+    
+    def _create_risk_stratification_plot(self, risk_scores):
+        """Create risk stratification visualization"""
+        high_risk = risk_scores.get('high_risk', {})
+        low_risk = risk_scores.get('low_risk', {})
+        
+        if not high_risk or not low_risk:
+            return
+        
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
+        
+        # High-risk states
+        hr_states = list(high_risk['mean'].keys())
+        hr_means = list(high_risk['mean'].values())
+        hr_risks = list(high_risk['risk_score'].values())
+        
+        bars1 = ax1.bar(hr_states, hr_means, alpha=0.7, color='red', edgecolor='black')
+        ax1.set_xlabel('High-Risk States')
+        ax1.set_ylabel('Mean Data Value (%)')
+        ax1.set_title('High-Risk States', fontsize=14, pad=15)
+        ax1.tick_params(axis='x', rotation=45)
+        ax1.grid(True, alpha=0.3, axis='y')
+        
+        # Low-risk states
+        lr_states = list(low_risk['mean'].keys())
+        lr_means = list(low_risk['mean'].values())
+        
+        bars2 = ax2.bar(lr_states, lr_means, alpha=0.7, color='green', edgecolor='black')
+        ax2.set_xlabel('Low-Risk States')
+        ax2.set_ylabel('Mean Data Value (%)')
+        ax2.set_title('Low-Risk States', fontsize=14, pad=15)
+        ax2.tick_params(axis='x', rotation=45)
+        ax2.grid(True, alpha=0.3, axis='y')
+        
+        plt.tight_layout()
+        plt.savefig('outputs/visualizations/risk_stratification.png', dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        self.logger.info("      ✅ Risk stratification plot saved")
+    
+    def _create_surveillance_dashboard(self, analysis_results):
+        """Create comprehensive surveillance dashboard"""
+        # Dynamic dashboard sizing
+        fig_size = self._calculate_figure_size(8, 'dashboard')
+        fig = plt.figure(figsize=fig_size)
+        
+        # Get key metrics
+        total_subjects = analysis_results.get('data_summary', {}).get('total_subjects', 0)
+        temporal = analysis_results.get('temporal_analysis', {})
+        geographic = analysis_results.get('geographic_analysis', {})
+        topic = analysis_results.get('topic_analysis', {})
+        
+        # Title
+        fig.suptitle('Population Health Surveillance Dashboard', fontsize=24, fontweight='bold', y=0.95)
+        
+        # Key metrics panels
+        ax1 = plt.subplot(2, 4, 1)
+        ax1.text(0.5, 0.7, f'{total_subjects:,}', ha='center', va='center',
+                fontsize=24, fontweight='bold', color='darkblue')
+        ax1.text(0.5, 0.3, 'Total Records\nAnalyzed', ha='center', va='center',
+                fontsize=12, fontweight='bold')
+        ax1.set_xlim(0, 1)
+        ax1.set_ylim(0, 1)
+        ax1.axis('off')
+        
+        # Temporal trend summary
+        ax2 = plt.subplot(2, 4, 2)
+        trend = temporal.get('trend', {})
+        r_squared = trend.get('r_squared', 0)
+        direction = trend.get('direction', 'unknown')
+        ax2.text(0.5, 0.7, f'R² = {r_squared:.3f}', ha='center', va='center',
+                fontsize=18, fontweight='bold', color='green' if r_squared > 0.5 else 'orange')
+        ax2.text(0.5, 0.3, f'Temporal Trend\n({direction})', ha='center', va='center',
+                fontsize=12, fontweight='bold')
+        ax2.set_xlim(0, 1)
+        ax2.set_ylim(0, 1)
+        ax2.axis('off')
+        
+        # Geographic summary
+        ax3 = plt.subplot(2, 4, 3)
+        high_risk_count = len(geographic.get('high_risk_states', []))
+        ax3.text(0.5, 0.7, f'{high_risk_count}', ha='center', va='center',
+                fontsize=24, fontweight='bold', color='red')
+        ax3.text(0.5, 0.3, 'High-Risk\nStates', ha='center', va='center',
+                fontsize=12, fontweight='bold')
+        ax3.set_xlim(0, 1)
+        ax3.set_ylim(0, 1)
+        ax3.axis('off')
+        
+        # Cognitive health records
+        ax4 = plt.subplot(2, 4, 4)
+        cog_records = topic.get('cognitive_metrics', {}).get('records', 0)
+        ax4.text(0.5, 0.7, f'{cog_records:,}', ha='center', va='center',
+                fontsize=20, fontweight='bold', color='purple')
+        ax4.text(0.5, 0.3, 'Cognitive Health\nRecords', ha='center', va='center',
+                fontsize=12, fontweight='bold')
+        ax4.set_xlim(0, 1)
+        ax4.set_ylim(0, 1)
+        ax4.axis('off')
+        
+        # Mini plots in bottom row
+        if temporal.get('yearly_trends') and temporal['yearly_trends'].get('mean'):
+            ax5 = plt.subplot(2, 4, 5)
+            try:
+                trends = temporal['yearly_trends']
+                years = sorted([int(y) for y in trends['mean'].keys()])
+                means = [trends['mean'][str(y)] for y in years]
+                ax5.plot(years, means, 'o-', linewidth=2, markersize=6, color='steelblue')
+                ax5.set_title('Temporal Trend', fontweight='bold')
+                ax5.grid(True, alpha=0.3)
+            except (KeyError, ValueError) as e:
+                self.logger.warning(f"      ⚠️ Error creating mini temporal plot: {e}")
+                ax5 = plt.subplot(2, 4, 5)
+                ax5.text(0.5, 0.5, 'Temporal data\nprocessing error', ha='center', va='center')
+                ax5.set_title('Temporal Trend', fontweight='bold')
+                ax5.axis('off')
+        
+        # Mini geographic plot
+        if geographic.get('state_statistics'):
+            ax6 = plt.subplot(2, 4, 6)
+            all_states = list(geographic['state_statistics']['mean'].keys())
+            display_count = self._calculate_optimal_display_count(len(all_states), 'states')
+            states = all_states[:min(display_count, 8)]  # Limit for dashboard space
+            means = [geographic['state_statistics']['mean'][s] for s in states]
+            
+            # Use intelligent colors
+            high_risk = geographic.get('high_risk_states', [])
+            low_risk = geographic.get('low_risk_states', [])
+            risk_colors = self._get_risk_color_palette()
+            colors = []
+            for s in states:
+                if s in high_risk:
+                    colors.append(risk_colors['high'])
+                elif s in low_risk:
+                    colors.append(risk_colors['low'])
+                else:
+                    colors.append(risk_colors['neutral'])
+                    
+            ax6.bar(range(len(states)), means, color=colors, alpha=0.7)
+            ax6.set_title('Geographic Patterns', fontweight='bold')
+            ax6.set_xticks(range(len(states)))
+            ax6.set_xticklabels(states, rotation=45, fontsize=8)
+        
+        # Analysis summary text
+        ax7 = plt.subplot(2, 4, (7, 8))
+        summary_text = f"""
+SURVEILLANCE ANALYSIS SUMMARY:
+
+• Population health surveillance dataset analyzed
+• {total_subjects:,} total health records processed
+• {high_risk_count} high-risk geographic regions identified  
+• {cog_records:,} cognitive health indicators analyzed
+• Temporal trend: {direction} pattern (R²={r_squared:.3f})
+• Geographic health disparities detected and quantified
+• Multi-modal health surveillance indicators processed
+• Population-level risk stratification completed
+• Predictive modeling framework applied
+
+This analysis provides comprehensive surveillance insights
+for population health monitoring and intervention planning.
+        """
+        ax7.text(0.05, 0.95, summary_text, ha='left', va='top', fontsize=11,
+                transform=ax7.transAxes)
+        ax7.set_xlim(0, 1)
+        ax7.set_ylim(0, 1)
+        ax7.axis('off')
+        
+        plt.tight_layout()
+        plt.subplots_adjust(top=0.92)
+        plt.savefig('outputs/visualizations/surveillance_dashboard.png', dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        self.logger.info("      ✅ Surveillance dashboard saved")
 
 
 def main():

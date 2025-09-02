@@ -46,14 +46,29 @@ class BrfssAdapter(BaseDatasetAdapter):
             except Exception:
                 continue
         combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
-        # Keep a set of likely analysis columns (numeric)
+        # For BRFSS, keep all important surveillance columns
         if not combined.empty:
-            numeric = combined.select_dtypes(include=[int, float])
-            # Keep geographic/time columns if present
-            keep_cols = [c for c in combined.columns if c in (
-                'LocationAbbr', 'LocationDesc', 'YearStart', 'YearEnd', 'Class', 'Topic', 'Question'
-            )]
-            combined = pd.concat([numeric, combined[keep_cols]], axis=1)
+            # Keep all BRFSS-specific columns that are important for analysis
+            important_cols = [
+                'YearStart', 'YearEnd', 'LocationAbbr', 'LocationDesc', 
+                'Datasource', 'Class', 'Topic', 'Question',
+                'Data_Value', 'Data_Value_Alt', 'Data_Value_Type', 'Data_Value_Unit',
+                'Low_Confidence_Limit', 'High_Confidence_Limit',
+                'StratificationCategory1', 'Stratification1', 
+                'StratificationCategory2', 'Stratification2',
+                'Geolocation', 'ClassID', 'TopicID', 'QuestionID', 'LocationID'
+            ]
+            
+            # Keep columns that exist in the dataset
+            cols_to_keep = [c for c in important_cols if c in combined.columns]
+            
+            # Also keep any numeric columns not already in the list
+            numeric_cols = combined.select_dtypes(include=[int, float]).columns.tolist()
+            for col in numeric_cols:
+                if col not in cols_to_keep:
+                    cols_to_keep.append(col)
+            
+            combined = combined[cols_to_keep]
             # Ensure unique column names to avoid DataFrame returns on label selection
             combined = combined.loc[:, ~combined.columns.duplicated()]
         self.combined_data = combined

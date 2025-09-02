@@ -101,6 +101,49 @@
       }
     },
     
+    "surveillance_indicators": {
+      "data_value": {
+        "possible_names": [
+          "Data_Value", "data_value", "value", "metric_value"
+        ],
+        "description": "Primary surveillance metric value",
+        "units": ["percentage", "count", "rate"],
+        "clinical_significance": "Population-level health indicator"
+      },
+      
+      "location": {
+        "possible_names": [
+          "LocationAbbr", "LocationDesc", "state", "location"
+        ],
+        "description": "Geographic location identifier",
+        "clinical_significance": "Geographic health disparities"
+      },
+      
+      "health_topic": {
+        "possible_names": [
+          "Topic", "Class", "health_topic", "category"
+        ],
+        "description": "Health surveillance topic category",
+        "clinical_significance": "Health domain classification"
+      },
+      
+      "year": {
+        "possible_names": [
+          "YearStart", "YearEnd", "year", "survey_year"
+        ],
+        "description": "Survey year",
+        "clinical_significance": "Temporal trends in health outcomes"
+      },
+      
+      "confidence_limits": {
+        "possible_names": [
+          "Low_Confidence_Limit", "High_Confidence_Limit", "CI_lower", "CI_upper"
+        ],
+        "description": "Statistical confidence intervals",
+        "clinical_significance": "Precision of population estimates"
+      }
+    },
+    
     "demographics": {
       "age": {
         "possible_names": [

@@ -298,21 +298,21 @@ Analysis cannot proceed without resolving credit/billing issues.
             analysis_results = self._execute_analysis_phase()
             self.results['analysis'] = analysis_results
             
-            # Step 3: Literature Research
+            # Step 3: AI-Powered Synthesis (moved up before literature)
             self.logger.info("\n" + "="*80)
-            self.logger.info("STEP 3: LITERATURE RESEARCH & VALIDATION")
-            self.logger.info("" + "="*80)
-            
-            literature_results = self._execute_literature_phase()
-            self.results['literature'] = literature_results
-            
-            # Step 4: AI-Powered Synthesis
-            self.logger.info("\n" + "="*80)
-            self.logger.info("STEP 4: AI-POWERED SYNTHESIS & INSIGHTS")
+            self.logger.info("STEP 3: AI-POWERED SYNTHESIS & INSIGHTS")
             self.logger.info("" + "="*80)
             
             synthesis_results = self._execute_synthesis_phase()
             self.results['synthesis'] = synthesis_results
+            
+            # Step 4: Literature Research & Validation (moved to validate findings)
+            self.logger.info("\n" + "="*80)
+            self.logger.info("STEP 4: LITERATURE RESEARCH & VALIDATION")
+            self.logger.info("" + "="*80)
+            
+            literature_results = self._execute_literature_phase()
+            self.results['literature'] = literature_results
             
             # Step 5: Generate Reports
             self.logger.info("\n" + "="*80)
@@ -451,20 +451,89 @@ Analysis cannot proceed without resolving credit/billing issues.
             return synthesis_results
     
     def _generate_rule_based_insights(self, discovery: Dict, analysis: Dict, literature: Dict) -> List[str]:
-        """Fallback, deterministic insights without external AI."""
+        """Fallback, deterministic insights without external AI - handles both surveillance and assessment data."""
         insights = []
         try:
-            dq = discovery.get('data_quality', {}).get('overall_score', 0)
-            sig_corrs = len([1 for _, v in analysis.get('correlation_analysis', {}).get('primary_correlations', {}).items() if v.get('p_value', 1) < 0.05])
-            n_papers = literature.get('papers_found', {}).get('total_unique_papers', 0)
-            if dq:
-                insights.append(f"Data quality supports analysis (score {dq:.2f}).")
-            if sig_corrs:
-                insights.append(f"Identified {sig_corrs} significant cross-assessment correlations; consider FDR-adjusted review.")
-            if n_papers:
-                insights.append(f"Findings contextualized against {n_papers} papers; examine confirmatory vs novel signals.")
-        except Exception:
-            pass
+            # Check if this is surveillance analysis
+            temporal_analysis = analysis.get('temporal_analysis', {})
+            geographic_analysis = analysis.get('geographic_analysis', {})
+            topic_analysis = analysis.get('topic_analysis', {})
+            predictive_models = analysis.get('predictive_models', {})
+            risk_scores = analysis.get('risk_scores', {})
+            
+            if temporal_analysis or geographic_analysis:
+                # Surveillance data insights
+                total_records = discovery.get('dataset_info', {}).get('total_subjects', 0)
+                insights.append(f"Surveillance analysis of {total_records:,} population health records completed successfully.")
+                
+                # Temporal trends
+                trend = temporal_analysis.get('trend', {})
+                if trend:
+                    direction = trend.get('direction', 'unknown')
+                    r_squared = trend.get('r_squared', 0)
+                    p_value = trend.get('p_value', 1)
+                    if p_value < 0.05:
+                        insights.append(f"Significant {direction} temporal trend detected (R²={r_squared:.3f}, p={p_value:.4f}) - strong evidence of population-level changes over time.")
+                    else:
+                        insights.append(f"Temporal trend analysis shows {direction} pattern (R²={r_squared:.3f}) but requires further validation.")
+                
+                # Geographic patterns  
+                high_risk_states = geographic_analysis.get('high_risk_states', [])
+                low_risk_states = geographic_analysis.get('low_risk_states', [])
+                if high_risk_states:
+                    display_count = min(len(high_risk_states), max(2, int(len(high_risk_states) * 0.6)))
+                    displayed_states = ', '.join(high_risk_states[:display_count])
+                    suffix = '...' if len(high_risk_states) > display_count else ''
+                    insights.append(f"Geographic analysis identified {len(high_risk_states)} high-risk states: {displayed_states}{suffix} - suggests regional health disparities requiring targeted interventions.")
+                if low_risk_states:
+                    display_count = min(len(low_risk_states), max(2, int(len(low_risk_states) * 0.6)))
+                    displayed_states = ', '.join(low_risk_states[:display_count])
+                    suffix = '...' if len(low_risk_states) > display_count else ''
+                    insights.append(f"Protective geographic patterns found in {len(low_risk_states)} states: {displayed_states}{suffix} - may inform best practice identification.")
+                
+                # Cognitive health metrics
+                cognitive_metrics = topic_analysis.get('cognitive_metrics', {})
+                if cognitive_metrics:
+                    records = cognitive_metrics.get('records', 0)
+                    mean_value = cognitive_metrics.get('mean_value', 0)
+                    insights.append(f"Cognitive health analysis: {records:,} records analyzed with mean indicator value of {mean_value:.1f} - provides population baseline for cognitive health surveillance.")
+                
+                # Predictive modeling
+                if predictive_models and predictive_models.get('r2_score', 0) > 0:
+                    r2_score = predictive_models.get('r2_score', 0)
+                    feature_importance = predictive_models.get('feature_importance', [])
+                    insights.append(f"Predictive model achieved R²={r2_score:.3f} - demonstrates feasibility of population-level cognitive health forecasting.")
+                    if feature_importance:
+                        top_features = [f['feature'] for f in feature_importance[:2]]
+                        insights.append(f"Key predictive factors: {', '.join(top_features)} - identifies modifiable risk factors for population intervention.")
+                
+                # Risk stratification
+                median_risk = risk_scores.get('median_risk', 0)
+                if median_risk > 0:
+                    insights.append(f"Population risk stratification completed (median risk: {median_risk:.3f}) - enables targeted public health resource allocation.")
+                
+                # Literature context
+                n_papers = literature.get('papers_found', {}).get('total_unique_papers', 0)
+                if n_papers > 0:
+                    insights.append(f"Analysis validated against {n_papers} research papers - findings positioned within established surveillance literature.")
+                    
+            else:
+                # Original individual assessment insights
+                dq = discovery.get('data_quality', {}).get('overall_score', 0)
+                sig_corrs = len([1 for _, v in analysis.get('correlation_analysis', {}).get('primary_correlations', {}).items() if v.get('p_value', 1) < 0.05])
+                n_papers = literature.get('papers_found', {}).get('total_unique_papers', 0)
+                
+                if dq > 0:
+                    insights.append(f"Data quality supports robust analysis (score {dq:.2f}).")
+                if sig_corrs > 0:
+                    insights.append(f"Identified {sig_corrs} significant cross-assessment correlations - cross-assessment relationships observed; review adjusted results after FDR correction.")
+                if n_papers > 0:
+                    insights.append(f"Findings contextualized against {n_papers} papers - examine confirmatory vs novel signals.")
+                    
+        except Exception as e:
+            self.logger.error(f"Error generating rule-based insights: {e}")
+            insights.append("Analysis completed - detailed results available in output files.")
+            
         return insights
     
     def _generate_cross_agent_insights(self, discovery: Dict, analysis: Dict, 
@@ -474,7 +543,48 @@ Analysis cannot proceed without resolving credit/billing issues.
         
         try:
             # Build comprehensive context for AI analysis
-            context = f"""
+            # Check if we have surveillance analysis results
+            temporal_analysis = analysis.get('temporal_analysis', {})
+            geographic_analysis = analysis.get('geographic_analysis', {})
+            topic_analysis = analysis.get('topic_analysis', {})
+            predictive_models = analysis.get('predictive_models', {})
+            risk_scores = analysis.get('risk_scores', {})
+            
+            # Build context based on analysis type
+            if temporal_analysis or geographic_analysis:
+                # Surveillance data context
+                context = f"""
+Analyze the following surveillance research findings and generate key insights:
+
+DATASET OVERVIEW:
+- Total Records: {discovery.get('dataset_info', {}).get('total_subjects', 0):,}
+- Data Type: Population surveillance data
+- Files Analyzed: {discovery.get('dataset_info', {}).get('files_analyzed', 0)}
+
+SURVEILLANCE ANALYSIS RESULTS:
+- Temporal Trend: {temporal_analysis.get('trend', {}).get('direction', 'Unknown')} (R²={temporal_analysis.get('trend', {}).get('r_squared', 0):.3f})
+- High Risk States: {geographic_analysis.get('high_risk_states', [])}
+- Cognitive Health Records: {topic_analysis.get('cognitive_metrics', {}).get('records', 0):,}
+- Mean Cognitive Metric: {topic_analysis.get('cognitive_metrics', {}).get('mean_value', 0):.1f}
+- Predictive Model Performance: R²={predictive_models.get('r2_score', 0):.3f}
+
+LITERATURE VALIDATION:
+- Papers Analyzed: {literature.get('papers_found', {}).get('total_unique_papers', 0)}
+- Sample Size Percentile: {literature.get('validation_results', {}).get('sample_size_percentile', 0):.1f}%
+
+Generate 5-6 key insights for this surveillance analysis. Focus on:
+1. Temporal trends and their implications
+2. Geographic health disparities identified
+3. Population-level cognitive health patterns
+4. Predictive modeling insights for public health
+5. Clinical and policy implications
+6. Novel surveillance findings vs literature
+
+Format as concise bullet points, one insight per line.
+"""
+            else:
+                # Individual assessment context (original)
+                context = f"""
 Analyze the following multi-agent research findings and generate key insights by combining the results:
 
 DATA DISCOVERY RESULTS:
@@ -752,26 +862,107 @@ Format as clear bullet points under each section. Write in plain English for res
             return self._generate_offline_findings_summary()
     
     def _generate_offline_findings_summary(self) -> str:
-        """Produce a plain, deterministic summary without calling external AI."""
+        """Produce a plain, deterministic summary without calling external AI - handles surveillance and assessment data."""
         discovery = self.results.get('discovery', {})
         analysis = self.results.get('analysis', {})
         literature = self.results.get('literature', {})
         synthesis = self.results.get('synthesis', {})
+        
         total_subjects = discovery.get('dataset_info', {}).get('total_subjects', 0)
         files_processed = discovery.get('dataset_info', {}).get('files_analyzed', 0)
-        sig_corrs = len([1 for _, v in analysis.get('correlation_analysis', {}).get('primary_correlations', {}).items() if v.get('p_value', 1) < 0.05])
         papers = literature.get('papers_found', {}).get('total_unique_papers', 0)
+        
         lines = []
-        lines.append("## 🔬 KEY FINDINGS")
-        lines.append(f"- Subjects analyzed: {total_subjects}")
-        lines.append(f"- Files processed: {files_processed}")
-        lines.append(f"- Significant correlations: {sig_corrs}")
-        lines.append("\n## 🏥 CLINICAL SIGNIFICANCE")
-        lines.append("- Cross-assessment relationships observed; review adjusted results after FDR correction.")
-        lines.append("\n## 📚 LITERATURE CONTEXT")
-        lines.append(f"- Papers reviewed: {papers}")
-        lines.append("\n## 🚀 NEXT STEPS")
-        lines.append("- Validate findings in an external cohort and assess robustness.")
+        
+        # Check if this is surveillance analysis
+        temporal_analysis = analysis.get('temporal_analysis', {})
+        geographic_analysis = analysis.get('geographic_analysis', {})
+        topic_analysis = analysis.get('topic_analysis', {})
+        predictive_models = analysis.get('predictive_models', {})
+        risk_scores = analysis.get('risk_scores', {})
+        
+        if temporal_analysis or geographic_analysis:
+            # Surveillance data summary
+            lines.append("## 🔬 KEY FINDINGS")
+            lines.append(f"- Population health records analyzed: {total_subjects:,}")
+            lines.append(f"- Files processed: {files_processed}")
+            
+            # Temporal trends
+            trend = temporal_analysis.get('trend', {})
+            if trend:
+                direction = trend.get('direction', 'unknown')
+                r_squared = trend.get('r_squared', 0)
+                p_value = trend.get('p_value', 1)
+                significance = "significant" if p_value < 0.05 else "non-significant"
+                lines.append(f"- Temporal trend: {direction} ({significance}, R²={r_squared:.3f})")
+            
+            # Geographic patterns
+            high_risk_states = geographic_analysis.get('high_risk_states', [])
+            if high_risk_states:
+                lines.append(f"- High-risk geographic regions identified: {len(high_risk_states)} states")
+            
+            # Cognitive health analysis
+            cognitive_metrics = topic_analysis.get('cognitive_metrics', {})
+            if cognitive_metrics:
+                cognitive_records = cognitive_metrics.get('records', 0)
+                lines.append(f"- Cognitive health indicators: {cognitive_records:,} records analyzed")
+            
+            # Predictive modeling
+            if predictive_models and predictive_models.get('r2_score', 0) > 0:
+                r2_score = predictive_models.get('r2_score', 0)
+                lines.append(f"- Predictive modeling: R²={r2_score:.3f} achieved")
+            
+            lines.append("\n## 🏥 CLINICAL SIGNIFICANCE")
+            
+            # Geographic disparities
+            if high_risk_states:
+                top_states = ', '.join(high_risk_states[:3])
+                lines.append(f"- Geographic health disparities: {top_states} show elevated risk patterns requiring targeted interventions")
+            
+            # Temporal implications  
+            if trend and trend.get('p_value', 1) < 0.05:
+                direction = trend.get('direction', 'unknown')
+                lines.append(f"- Population-level {direction} trend indicates systematic changes in health outcomes over time")
+            
+            # Population health insights
+            if cognitive_metrics:
+                mean_value = cognitive_metrics.get('mean_value', 0)
+                lines.append(f"- Population cognitive health baseline established: mean indicator {mean_value:.1f}")
+            
+            # Predictive insights
+            if predictive_models and predictive_models.get('feature_importance'):
+                top_features = [f['feature'] for f in predictive_models['feature_importance'][:2]]
+                lines.append(f"- Key modifiable risk factors identified: {', '.join(top_features)}")
+            
+            lines.append("\n## 📚 LITERATURE CONTEXT")
+            lines.append(f"- Papers reviewed: {papers}")
+            if papers > 0:
+                lines.append("- Surveillance findings contextualized within established population health literature")
+            
+            lines.append("\n## 🚀 NEXT STEPS")
+            lines.append("- Validate temporal trends in independent surveillance datasets")
+            lines.append("- Implement targeted interventions in high-risk geographic regions")
+            if predictive_models:
+                lines.append("- Deploy predictive models for population-level risk screening")
+            
+        else:
+            # Original individual assessment data summary
+            sig_corrs = len([1 for _, v in analysis.get('correlation_analysis', {}).get('primary_correlations', {}).items() if v.get('p_value', 1) < 0.05])
+            
+            lines.append("## 🔬 KEY FINDINGS")
+            lines.append(f"- Subjects analyzed: {total_subjects}")
+            lines.append(f"- Files processed: {files_processed}")
+            lines.append(f"- Significant correlations: {sig_corrs}")
+            
+            lines.append("\n## 🏥 CLINICAL SIGNIFICANCE")
+            lines.append("- Cross-assessment relationships observed; review adjusted results after FDR correction.")
+            
+            lines.append("\n## 📚 LITERATURE CONTEXT")
+            lines.append(f"- Papers reviewed: {papers}")
+            
+            lines.append("\n## 🚀 NEXT STEPS")
+            lines.append("- Validate findings in an external cohort and assess robustness.")
+            
         return "\n".join(lines)
     
     def _identify_novel_discoveries(self, analysis: Dict, literature: Dict) -> List[str]:

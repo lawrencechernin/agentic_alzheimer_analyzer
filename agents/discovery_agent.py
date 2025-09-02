@@ -258,7 +258,7 @@ class DataDiscoveryAgent:
                     'columns': list(df_sample.columns),
                     'dtypes': df_sample.dtypes.to_dict(),
                     'missing_data': df_sample.isnull().sum().to_dict(),
-                    'sample_data': df_sample.head(3).to_dict()
+                    'sample_data': df_sample.head(min(5, len(df_sample))).to_dict()
                 }
                 
                 # Try to count unique subjects

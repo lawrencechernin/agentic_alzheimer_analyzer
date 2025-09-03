@@ -1202,18 +1202,46 @@ class CognitiveAnalysisAgent:
     
     def _make_serializable(self, obj):
         """Convert non-serializable objects for JSON"""
+        try:
+            import numpy as np
+            import pandas as pd
+        except Exception:
+            np = None
+            pd = None
         if isinstance(obj, dict):
             return {key: self._make_serializable(value) for key, value in obj.items()}
         elif isinstance(obj, list):
             return [self._make_serializable(item) for item in obj]
-        elif isinstance(obj, (np.int64, np.int32)):
-            return int(obj)
-        elif isinstance(obj, (np.float64, np.float32)):
-            return float(obj)
-        elif pd.isna(obj):
-            return None
-        else:
-            return obj
+        # datetime-like
+        elif hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        # numpy types
+        if np is not None:
+            if isinstance(obj, (np.integer,)):
+                return int(obj)
+            if isinstance(obj, (np.floating,)):
+                return float(obj)
+            if isinstance(obj, (np.bool_,)):
+                return bool(obj)
+            if isinstance(obj, (np.ndarray,)):
+                return obj.tolist()
+            if isinstance(obj, np.dtype):
+                return str(obj)
+        # pandas types
+        if pd is not None:
+            if isinstance(obj, pd.Timestamp):
+                return obj.isoformat()
+            if isinstance(obj, pd.Series):
+                return obj.to_list()
+            if isinstance(obj, pd.DataFrame):
+                return obj.to_dict(orient='list')
+        # pandas/numpy missing
+        try:
+            if pd is not None and pd.isna(obj):
+                return None
+        except Exception:
+            pass
+        return obj
     
     def print_analysis_summary(self, results: Dict[str, Any]):
         """Print formatted analysis summary"""

@@ -38,7 +38,11 @@ class LiteratureResearchAgent:
         self.ai_client = ai_client
         self.token_manager = token_manager
         
-        # Load configuration
+        # Setup logging early
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger(__name__)
+        
+        # Load configuration (graceful if missing)
         self.config = self._load_config()
         self.literature_config = self.config.get('literature_research', {})
         
@@ -51,17 +55,21 @@ class LiteratureResearchAgent:
         self.extracted_findings = []
         self.novelty_analysis = {}
         
-        # Setup logging
-        logging.basicConfig(level=logging.INFO)
-        self.logger = logging.getLogger(__name__)
-        
         self.logger.info("📚 Literature Research Agent initialized")
     
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration"""
         try:
             import yaml
-            with open(self.config_path, 'r') as f:
+            cfg_path = self.config_path
+            if not os.path.exists(cfg_path):
+                self.logger.warning(f"Warning: Could not load config {cfg_path}: file not found. Using defaults.")
+                default_path = "config/config.yaml"
+                if os.path.exists(default_path):
+                    cfg_path = default_path
+                else:
+                    return {}
+            with open(cfg_path, 'r') as f:
                 return yaml.safe_load(f)
         except Exception as e:
             self.logger.error(f"Error loading config: {e}")

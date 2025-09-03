@@ -55,13 +55,18 @@ class AgenticAlzheimerAnalyzer:
     to provide comprehensive, autonomous analysis of Alzheimer's datasets.
     """
     
-    def __init__(self, config_path: str = "config/config.yaml"):
-        """Initialize orchestrator with configuration"""
+    def __init__(self, config_path: str = "config/config.yaml", overrides: Optional[Dict[str, Any]] = None):
+        """Initialize orchestrator with configuration and optional overrides"""
         self.config_path = config_path
         self.config = self._load_config()
+        if overrides:
+            self._apply_overrides(overrides)
         
         # Setup logging first
         self._setup_logging()
+        
+        # Persist merged runtime config for downstream agents
+        self.runtime_config_path = self._persist_runtime_config()
         
         # Initialize token management
         self.token_manager = TokenManager("config/usage_limits.json")
@@ -75,10 +80,11 @@ class AgenticAlzheimerAnalyzer:
         # Validate that at least one AI client is available or offline mode is enabled
         self._validate_ai_clients()
         
-        # Initialize agents
-        self.discovery_agent = DataDiscoveryAgent(config_path)
-        self.analysis_agent = CognitiveAnalysisAgent(config_path)
-        self.literature_agent = LiteratureResearchAgent(config_path)
+        # Initialize agents using the persisted runtime config path
+        cfg_path_for_agents = self.runtime_config_path or self.config_path
+        self.discovery_agent = DataDiscoveryAgent(cfg_path_for_agents)
+        self.analysis_agent = CognitiveAnalysisAgent(cfg_path_for_agents)
+        self.literature_agent = LiteratureResearchAgent(cfg_path_for_agents)
         
         # Results storage
         self.results = {
@@ -99,14 +105,51 @@ class AgenticAlzheimerAnalyzer:
         self.logger.info(f"🤖 Agentic Alzheimer's Analyzer orchestrator initialized ({mode_msg})")
     
     def _load_config(self) -> Dict[str, Any]:
-        """Load main configuration file"""
+        """Load main configuration file; fall back to default if needed"""
+        config: Dict[str, Any] = {}
+        tried_paths = []
         try:
+            tried_paths.append(self.config_path)
             with open(self.config_path, 'r') as f:
-                config = yaml.safe_load(f)
-            return config
+                config = yaml.safe_load(f) or {}
         except Exception as e:
             print(f"Error loading config: {e}")
-            return {}
+        
+        # Fallback to default if empty or missing
+        if not config and self.config_path != "config/config.yaml":
+            default_path = "config/config.yaml"
+            try:
+                tried_paths.append(default_path)
+                with open(default_path, 'r') as f:
+                    config = yaml.safe_load(f) or {}
+                print(f"Using fallback configuration: {default_path}")
+            except Exception as e:
+                print(f"Failed to load fallback config {default_path}: {e}")
+        
+        return config
+    
+    def _apply_overrides(self, overrides: Dict[str, Any]):
+        """Deep-merge overrides into the loaded configuration"""
+        def deep_merge(base: Dict[str, Any], update: Dict[str, Any]):
+            for key, value in update.items():
+                if isinstance(value, dict) and isinstance(base.get(key), dict):
+                    deep_merge(base[key], value)
+                else:
+                    base[key] = value
+        if isinstance(overrides, dict):
+            deep_merge(self.config, overrides)
+    
+    def _persist_runtime_config(self) -> Optional[str]:
+        """Persist the current in-memory config to a runtime YAML for agents to consume."""
+        try:
+            os.makedirs('outputs', exist_ok=True)
+            path = 'outputs/runtime_config.yaml'
+            with open(path, 'w') as f:
+                yaml.safe_dump(self.config, f, sort_keys=False)
+            return path
+        except Exception as e:
+            self.logger.warning(f"Failed to persist runtime config: {e}")
+            return None
     
     def _setup_logging(self):
         """Setup logging system"""
@@ -349,16 +392,11 @@ Analysis cannot proceed without resolving credit/billing issues.
             # Run discovery agent
             discovery_results = self.discovery_agent.discover_dataset()
             
-            # Safety check: Exit if no files were analyzed
+            # Safety check: Warn if no files were analyzed but continue (adapter may still load data)
             files_analyzed = discovery_results.get('dataset_info', {}).get('files_analyzed', 0)
             if files_analyzed == 0:
-                self.logger.error("🚨 FATAL: Discovery agent analyzed 0 files - dataset discovery failed!")
-                self.logger.error("💡 Check that data files exist in the configured path")
-                print("\n🚨 FATAL ERROR: Discovery Phase Failed")
-                print("   Discovery agent analyzed 0 files")
-                print("   This usually means data files are missing or not found")
-                print("   Check the 'oasis/' directory contains OASIS CSV files")
-                sys.exit(1)
+                self.logger.warning("⚠️ Discovery agent analyzed 0 files - continuing; adapters may still load data.")
+                print("\n⚠️ WARNING: Discovery analyzed 0 files. Proceeding to analysis using dataset adapters if available.")
             
             # Print summary
             self.discovery_agent.print_discovery_summary(discovery_results)

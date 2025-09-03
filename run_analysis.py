@@ -10,6 +10,7 @@ Designed for the ECOG-MemTrax experiment but generalizable to other datasets.
 import os
 import sys
 from pathlib import Path
+import argparse
 
 # Add the project directory to Python path
 project_root = Path(__file__).parent
@@ -20,6 +21,11 @@ from core.orchestrator import AgenticAlzheimerAnalyzer
 
 def main():
     """Main entry point"""
+    parser = argparse.ArgumentParser(description="Agentic Alzheimer's Analyzer")
+    parser.add_argument("--dataset_name", type=str, default=None, help="Override config.dataset.name (e.g., Generic_CSV_Kaggle)")
+    parser.add_argument("--config", type=str, default="config/config.yaml", help="Path to YAML config file")
+    args = parser.parse_args()
+
     print("""
     🧠 AGENTIC ALZHEIMER'S ANALYZER
     ===============================
@@ -38,8 +44,12 @@ def main():
     """)
     
     try:
+        overrides = {}
+        if args.dataset_name:
+            overrides = {"dataset": {"name": args.dataset_name}}
+        
         # Initialize and run orchestrator
-        analyzer = AgenticAlzheimerAnalyzer()
+        analyzer = AgenticAlzheimerAnalyzer(config_path=args.config, overrides=overrides)
         results = analyzer.run_complete_analysis()
         
         if results['orchestrator']['status'] == 'completed':

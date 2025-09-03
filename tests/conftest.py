@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
+import os
+import sys
 import numpy as np
 import pandas as pd
 import pytest
+
+# Ensure project root is on sys.path for package imports
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 
 @pytest.fixture

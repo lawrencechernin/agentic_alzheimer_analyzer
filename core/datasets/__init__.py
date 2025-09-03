@@ -3,6 +3,7 @@ from typing import Dict, Any, Optional
 from .base_adapter import BaseDatasetAdapter
 from .oasis_adapter import OasisAdapter
 from .brfss_adapter import BrfssAdapter
+from .generic_csv_adapter import GenericCSVAdapter
 
 
 def get_adapter(config: Dict[str, Any]) -> Optional[BaseDatasetAdapter]:
@@ -14,9 +15,11 @@ def get_adapter(config: Dict[str, Any]) -> Optional[BaseDatasetAdapter]:
         candidates.append(OasisAdapter(config))
     if 'brfss' in name or 'healthy_aging' in name:
         candidates.append(BrfssAdapter(config))
-    # Fallback: try both
+    if 'generic' in name or 'csv' in name or 'kaggle' in name:
+        candidates.append(GenericCSVAdapter(config))
+    # Fallback: try all
     if not candidates:
-        candidates = [OasisAdapter(config), BrfssAdapter(config)]
+        candidates = [OasisAdapter(config), BrfssAdapter(config), GenericCSVAdapter(config)]
     for adapter in candidates:
         try:
             if adapter.is_available():

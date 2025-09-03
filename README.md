@@ -8,7 +8,6 @@ The Agentic Alzheimer's Analyzer is a revolutionary open-source framework that d
 
 ### Core Value Proposition
 - **Research Acceleration**: Reduces analysis time from months to hours
-- **Cost Democratization**: $50-100 per analysis vs. $50,000+ traditional consulting
 - **Global Accessibility**: No specialized personnel or infrastructure required
 - **Standardized Science**: Eliminates researcher bias, ensures reproducibility
 - **Open Source Impact**: Accelerates Alzheimer's research globally through shared frameworks
@@ -151,6 +150,7 @@ This framework automatically discovers and analyzes relationships across any com
 - Current adapters:
   - `OasisAdapter` for OASIS cross-sectional/longitudinal (`training_data/oasis/`)
   - `BrfssAdapter` for BRFSS surveillance CSVs (`dataset.file_patterns`)
+  - `GenericCSVAdapter` for simple CSV files (e.g., Kaggle datasets)
 - The agent automatically selects an adapter based on `config.dataset.name` and on-disk availability, with a safe fallback to legacy OASIS loading.
 
 ### **Generalization Principles: Learning Methods, Not Data**
@@ -313,38 +313,38 @@ The system comes pre-configured for OASIS analysis. Just download the data and r
 
 ### Using Your Own Dataset
 
-**Step 1: Update dataset configuration** in `config/config.yaml`:
+Option A: Place a CSV in the repository (e.g., `alzheimers_disease_data.csv`) and update `config/config.yaml`:
 ```yaml
 dataset:
-  name: "Your_Dataset_Name"
-  description: "Your dataset description"
-  
+  name: "Generic_CSV_Kaggle"
+  description: "Rabie El Kharoua 2024: Alzheimer's Disease Dataset (Kaggle)"
   data_sources:
-    - path: "./training_data/your_data/"  # Your data path
+    - path: "./alzheimers_disease_data.csv"
+      type: "local_file"
+  file_patterns:
+    generic_csv:
+      - "alzheimers_disease_data.csv"
+```
+Then run:
+```bash
+python run_analysis.py
+```
+
+Option B: Place files in a folder and use patterns:
+```yaml
+dataset:
+  name: "Generic_CSV_Folder"
+  data_sources:
+    - path: "./training_data/kaggle_ad/"
       type: "local_directory"
-      description: "Your study data"
+  file_patterns:
+    generic_csv:
+      - "*.csv"
 ```
 
-**Step 2: Define file patterns**:
-```yaml
-file_patterns:
-  your_data_type:
-    - "*.csv"
-    - "*cognitive*.csv"
-  assessment_data:
-    - "*assessment*.csv"
-    - "*clinical*.csv"
-```
-
-**Step 3: Set research objectives**:
-```yaml
-experiment:
-  name: "Your_Analysis_Name"
-  primary_objectives:
-    - "Predict cognitive decline using your biomarkers"
-    - "Validate assessment tools in your population"
-    - "Identify novel risk factors"
-```
+Tips:
+- If the dataset has known target columns (e.g., diagnosis, MMSE), add them to `experiment.target_variables` for better mapping.
+- The `GenericCSVAdapter` will load the CSV(s) and the agents will attempt intelligent variable discovery and analysis.
 
 ### Variable Mapping
 
@@ -427,7 +427,6 @@ The framework is designed to be easily extended:
 
 ### **Intelligent Resource Management**
 - **Adaptive Provider Selection**: Automatically chooses best AI model for each analysis phase
-- **Real-time Cost Monitoring**: Track token usage across all providers with detailed analytics
 - **Graceful Error Handling**: Robust fallbacks ensure analysis completion even with API issues
 - **Expert Prompt Engineering**: Domain-specific prompts maximize AI reasoning quality
 
@@ -590,7 +589,6 @@ For issues and contributions:
 
 ### **Transformative Impact Goals**
 - **10x Research Acceleration**: Reduce time from data to publication from years to months
-- **1000x Cost Reduction**: Make advanced analysis accessible to every researcher globally  
 - **Global Equity**: Enable developing countries to participate equally in Alzheimer's research
 - **Clinical Translation**: Bridge the gap from research findings to patient care
 

@@ -38,12 +38,13 @@ unzip archive.zip
 cp oasis_*.csv training_data/oasis/
 ```
 
-### Step 3: Set API Key
+### Step 3: (Optional) Set API Key for online AI
+By default, the analyzer runs in offline mode. To enable online AI synthesis, set one of the following:
 ```bash
 # Choose ONE provider (Claude recommended for best results)
 export ANTHROPIC_API_KEY="your-key-here"  # Claude (Recommended)
 # OR
-export OPENAI_API_KEY="your-key-here"     # GPT-4
+export OPENAI_API_KEY="your-key-here"     # OpenAI
 # OR  
 export GEMINI_API_KEY="your-key-here"     # Gemini
 ```
@@ -70,6 +71,14 @@ python run_analysis.py
 ```
 
 **📋 Detailed Setup**: See [training_data/oasis/README.md](training_data/oasis/README.md) for alternative download methods and troubleshooting.
+
+### Using AD Workbench (ADDI)
+If you have exported data from AD Workbench, see the new guide: [docs/ADDI_WORKBENCH.md](docs/ADDI_WORKBENCH.md)
+
+Quick CLI example (no config edits):
+```bash
+python run_analysis.py --offline --data-path training_data/addi_workbench_export/ --limit-rows 20000
+```
 
 ## 🌍 Who Benefits From This System?
 
@@ -151,6 +160,7 @@ This framework automatically discovers and analyzes relationships across any com
   - `OasisAdapter` for OASIS cross-sectional/longitudinal (`training_data/oasis/`)
   - `BrfssAdapter` for BRFSS surveillance CSVs (`dataset.file_patterns`)
   - `GenericCSVAdapter` for simple CSV files (e.g., Kaggle datasets)
+  - `ADDIWorkbenchAdapter` for AD Workbench exports (`training_data/addi_workbench_export/`)
 - The agent automatically selects an adapter based on `config.dataset.name` and on-disk availability, with a safe fallback to legacy OASIS loading.
 
 ### **Generalization Principles: Learning Methods, Not Data**

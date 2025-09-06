@@ -7,6 +7,7 @@ from typing import Dict, Any, List
 import os
 import glob
 import pandas as pd
+import logging
 from .base_adapter import BaseDatasetAdapter
 
 
@@ -26,6 +27,12 @@ class GenericCSVAdapter(BaseDatasetAdapter):
             or patterns_cfg.get('assessment_data')
             or ["*.csv"]
         )
+        # Sampling settings for large datasets
+        analysis_cfg = config.get('analysis', {}) or {}
+        self.use_sampling: bool = bool(analysis_cfg.get('use_sampling', False))
+        self.sample_size: int = int(analysis_cfg.get('analysis_sample_size', 5000) or 5000)
+        # Logger
+        self.logger = logging.getLogger(__name__)
 
     def is_available(self) -> bool:
         for fp in self._discover_files():
@@ -57,9 +64,15 @@ class GenericCSVAdapter(BaseDatasetAdapter):
             selected_files = files[:3]
         for fp in selected_files:
             try:
-                df = pd.read_csv(fp, low_memory=False)
+                if self.use_sampling and self.sample_size > 0:
+                    df = pd.read_csv(fp, nrows=self.sample_size, low_memory=False)
+                    self.logger.info(f"GenericCSVAdapter: loaded sample of {len(df)} rows from {os.path.basename(fp)}")
+                else:
+                    df = pd.read_csv(fp, low_memory=False)
+                    self.logger.info(f"GenericCSVAdapter: loaded {len(df)} rows from {os.path.basename(fp)}")
                 frames.append(df)
-            except Exception:
+            except Exception as e:
+                self.logger.warning(f"GenericCSVAdapter: failed to load {fp}: {e}")
                 continue
         combined = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
         self.combined_data = combined
@@ -74,6 +87,7 @@ class GenericCSVAdapter(BaseDatasetAdapter):
             'total_subjects': total,
             'baseline_subjects': total,
             'preprocessing_steps': [
-                "Generic CSV adapter: loaded CSV file(s) from configured paths/patterns"
+                "Generic CSV adapter: loaded CSV file(s) from configured paths/patterns",
+                f"Sampling: {'enabled' if self.use_sampling else 'disabled'} (rows={self.sample_size if self.use_sampling else 'all'})"
             ]
         } 

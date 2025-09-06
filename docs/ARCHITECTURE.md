@@ -34,9 +34,18 @@ Adapters are responsible for dataset-specific loading and minimal cleaning. They
 Current adapters:
 - `OasisAdapter`: loads `training_data/oasis/oasis_cross-sectional.csv` and `oasis_longitudinal.csv`, harmonizes columns, and imputes SES/MMSE
 - `BrfssAdapter`: discovers CSVs from configured paths/patterns and keeps numeric and key surveillance columns
+- `GenericCSVAdapter`: loads one or more CSVs from a file/folder; supports sampling via `analysis.use_sampling`
+- `ADDIWorkbenchAdapter`: ingests AD Workbench CSV exports, detects subject identifiers, selects baseline per subject, and merges safely
 
 Selection:
 - The agent uses `core/datasets.get_adapter(config)` to choose an adapter based on `config.dataset.name` keywords and availability. If no adapter is available, the agent falls back to the existing OASIS logic.
+
+### Adapter selection matrix (name hints)
+- Name contains `oasis` → `OasisAdapter`
+- Name contains `brfss` or `healthy_aging` → `BrfssAdapter`
+- Name contains `addi` or `workbench` → `ADDIWorkbenchAdapter`
+- Name contains `generic`, `csv`, or `kaggle` → `GenericCSVAdapter`
+- No match → try all in the order above and pick the first available
 
 ## Data Flow
 
@@ -51,8 +60,8 @@ Selection:
 
 ## AI Online vs Offline
 
+- Offline: Set `ai_settings.offline_mode: true` to disable external calls and generate deterministic, rule-based insights and summaries (default in `config/config.yaml`)
 - Online: Uses configured AI providers (`ai_providers`) for synthesis and summaries
-- Offline: Set `ai_settings.offline_mode: true` to disable external calls and generate deterministic, rule-based insights and summaries
 
 ## Extension Points
 

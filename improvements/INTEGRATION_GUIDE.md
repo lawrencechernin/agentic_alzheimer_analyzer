@@ -45,6 +45,18 @@ This guide shows how to integrate the advanced generalizability improvements int
 - **Based on**: Successful patterns from `baseline_learning_predictor.py` and other production scripts
 - **Impact**: Reduced 1.1M rows → 28K rows in real BHR analysis
 
+### 7. **Longitudinal Analysis Optimization** 📈🆕
+- **File**: `longitudinal_analysis_optimization.py`
+- **Purpose**: Transform single-timepoint analysis to robust longitudinal analysis
+- **Benefits**:
+  - Automatic longitudinal structure detection
+  - Subject-level aggregation (mean, std, min, max, trend)
+  - Composite score creation (RT/accuracy ratio)
+  - Quality filtering (Ashford criteria)
+  - 4-5x feature enrichment through aggregation
+- **Based on**: Successful BHR scripts achieving 0.70+ AUC
+- **Impact**: Expected AUC improvement from 0.59 → 0.70+ 
+
 ---
 ## 🔧 **Integration Methods**
 

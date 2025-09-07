@@ -55,6 +55,12 @@ try:
 except ImportError:
     F1_EVALUATION_AVAILABLE = False
 
+# Enhanced data merging with Cartesian join prevention
+try:
+    from enhanced_data_merging import EnhancedDataMerger, smart_merge_datasets
+    ENHANCED_MERGING_AVAILABLE = True
+except ImportError:
+    ENHANCED_MERGING_AVAILABLE = False
 # Multiple-testing correction
 try:
     from statsmodels.stats.multitest import multipletests
@@ -459,13 +465,31 @@ class CognitiveAnalysisAgent:
                 # Deduplicate the merging dataset first
                 df_deduplicated = self._deduplicate_subjects(df, common_subject_col, assessment_type)
                 
-                # Perform the merge
-                combined = combined.merge(
-                    df_deduplicated,
-                    on=common_subject_col,
-                    how='inner',
-                    suffixes=('', f'_{assessment_type}')
-                )
+                # Perform the merge using enhanced merging if available
+                if ENHANCED_MERGING_AVAILABLE:
+                    self.logger.info(f"   🚀 Using enhanced merge strategy for {assessment_type}")
+                    try:
+                        combined = smart_merge_datasets(
+                            combined, df_deduplicated, common_subject_col,
+                            df1_name="Combined", df2_name=assessment_type,
+                            logger=self.logger
+                        )
+                    except Exception as e:
+                        self.logger.warning(f"   ⚠️  Enhanced merge failed, falling back to standard merge: {e}")
+                        combined = combined.merge(
+                            df_deduplicated,
+                            on=common_subject_col,
+                            how='inner',
+                            suffixes=('', f'_{assessment_type}')
+                        )
+                else:
+                    # Standard merge (original logic)
+                    combined = combined.merge(
+                        df_deduplicated,
+                        on=common_subject_col,
+                        how='inner',
+                        suffixes=('', f'_{assessment_type}')
+                    )                )
                 after_merge = len(combined)
                 self.logger.info(f"   Merged {assessment_type}: {before_merge:,} → {after_merge:,} records")
                 

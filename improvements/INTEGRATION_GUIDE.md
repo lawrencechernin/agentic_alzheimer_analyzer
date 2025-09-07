@@ -28,8 +28,13 @@ This guide shows how to integrate the advanced generalizability improvements int
 - **Purpose**: Predict multiple outcomes simultaneously (CDR, MMSE, diagnosis)
 - **Benefits**: Comprehensive analysis, better clinical insights
 
----
+### 5. **Enhanced Data Merging** 🆕
+- **File**: `enhanced_data_merging.py`
+- **Purpose**: Intelligent dataset merging with Cartesian join prevention
+- **Benefits**: Safe longitudinal data merging, prevents memory explosions
+- **Based on**: Real-world BHR MemTrax-MCI analysis lesson learned
 
+---
 ## 🔧 **Integration Methods**
 
 ### **Option 1: Full Integration (Recommended)**

@@ -489,7 +489,7 @@ class CognitiveAnalysisAgent:
                         on=common_subject_col,
                         how='inner',
                         suffixes=('', f'_{assessment_type}')
-                    )                )
+                    )
                 after_merge = len(combined)
                 self.logger.info(f"   Merged {assessment_type}: {before_merge:,} → {after_merge:,} records")
                 

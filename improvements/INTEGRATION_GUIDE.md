@@ -34,6 +34,17 @@ This guide shows how to integrate the advanced generalizability improvements int
 - **Benefits**: Safe longitudinal data merging, prevents memory explosions
 - **Based on**: Real-world BHR MemTrax-MCI analysis lesson learned
 
+### 6. **BHR-Aware Merging** 🧠🆕
+- **File**: `bhr_aware_merging.py`
+- **Purpose**: Domain-specific merging for BHR and similar longitudinal medical datasets
+- **Benefits**: 
+  - Timepoint-first filtering (prevents 18x data explosions!)
+  - Quality pre-filtering (Status == 'Collected', RT validation)
+  - Sequential merge pattern (demographics → medical)
+  - Auto-detection of BHR dataset patterns
+- **Based on**: Successful patterns from `baseline_learning_predictor.py` and other production scripts
+- **Impact**: Reduced 1.1M rows → 28K rows in real BHR analysis
+
 ---
 ## 🔧 **Integration Methods**
 

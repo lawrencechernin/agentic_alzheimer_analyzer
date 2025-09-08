@@ -59,15 +59,19 @@ def compute_sequence_features(df: pd.DataFrame,
         # slope using time if available else index
         rt_series = pd.to_numeric(g['CorrectResponsesRT'], errors='coerce')
         if 'DaysAfterBaseline' in df_local.columns and g['DaysAfterBaseline'].notna().any():
-            x = g['DaysAfterBaseline'].fillna(method='ffill').fillna(0).values
+            x_raw = g['DaysAfterBaseline'].ffill().fillna(0).to_numpy(dtype=float)
         else:
-            x = np.arange(len(rt_series))
-        try:
-            if len(rt_series.dropna()) >= 2:
-                slope = float(np.polyfit(x[:len(rt_series)], rt_series.fillna(method='ffill').fillna(rt_series.median()).values, 1)[0])
-            else:
+            x_raw = np.arange(len(rt_series), dtype=float)
+        y_vals = rt_series.to_numpy(dtype=float)
+        mask = np.isfinite(y_vals)
+        x_vals = x_raw[mask]
+        y_vals = y_vals[mask]
+        if y_vals.size >= 2 and np.std(x_vals) > 0:
+            try:
+                slope = float(np.polyfit(x_vals, y_vals, 1)[0])
+            except Exception:
                 slope = 0.0
-        except Exception:
+        else:
             slope = 0.0
         features.append({
             subject_col: subject,

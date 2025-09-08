@@ -213,17 +213,23 @@ class BHRMemTraxMCIAnalyzer:
                         long_reliability_change = float(np.std(all_rts))
                 # Longitudinal slopes (fallback to index if no time)
                 long_n_timepoints = int(len(g))
-                rt_series = pd.to_numeric(g['CorrectResponsesRT'], errors='coerce')
+                rt_values = pd.to_numeric(g['CorrectResponsesRT'], errors='coerce').astype(float).to_numpy()
+                # Build x (time) vector
                 if 'DaysAfterBaseline' in g.columns and g['DaysAfterBaseline'].notna().any():
-                    x = pd.to_numeric(g['DaysAfterBaseline'], errors='coerce').fillna(method='ffill').fillna(0).values
+                    x_raw = pd.to_numeric(g['DaysAfterBaseline'], errors='coerce').fillna(method='ffill').fillna(0).to_numpy()
                 else:
-                    x = np.arange(len(rt_series))
-                try:
-                    if len(rt_series.dropna()) >= 2:
-                        slope = float(np.polyfit(x[:len(rt_series)], rt_series.fillna(method='ffill').fillna(rt_series.median()).values, 1)[0])
-                    else:
+                    x_raw = np.arange(len(rt_values), dtype=float)
+                # Align on valid y
+                mask_valid = np.isfinite(rt_values)
+                y_vals = rt_values[mask_valid]
+                x_vals = np.asarray(x_raw, dtype=float)[mask_valid]
+                # Fit only when enough points and x has variance
+                if y_vals.size >= 2 and np.std(x_vals) > 0:
+                    try:
+                        slope = float(np.polyfit(x_vals, y_vals, 1)[0])
+                    except Exception:
                         slope = 0.0
-                except Exception:
+                else:
                     slope = 0.0
                 features.append({
                     'SubjectCode': subject,

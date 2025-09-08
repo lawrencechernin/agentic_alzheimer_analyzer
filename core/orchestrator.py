@@ -14,6 +14,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
+import subprocess
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
@@ -341,6 +342,14 @@ Analysis cannot proceed without resolving credit/billing issues.
             analysis_results = self._execute_analysis_phase()
             self.results['analysis'] = analysis_results
             
+            # Optional: Clinical utility mode (composite labels, lean features, calibrated stacking)
+            if self.config.get('analysis', {}).get('clinical_utility_mode', True):
+                try:
+                    self.logger.info("\n=== CLINICAL UTILITY MODE (composite target, calibrated stack) ===")
+                    self._run_clinical_utility_mode()
+                except Exception as e:
+                    self.logger.warning(f"Clinical utility mode failed: {e}")
+            
             # Step 3: AI-Powered Synthesis (moved up before literature)
             self.logger.info("\n" + "="*80)
             self.logger.info("STEP 3: AI-POWERED SYNTHESIS & INSIGHTS")
@@ -442,6 +451,29 @@ Analysis cannot proceed without resolving credit/billing issues.
         except Exception as e:
             self.logger.error(f"Literature phase failed: {e}")
             return {'error': str(e)}
+    
+    def _run_clinical_utility_mode(self) -> None:
+        """Run the clinical utility pipeline script and load its results into orchestrator results."""
+        # Execute the script in-process via subprocess to ensure a clean environment
+        cmd = [sys.executable, str(project_root / 'bhr_memtrax_clinical_utility.py')]
+        self.logger.info(f"Running clinical utility pipeline: {' '.join(cmd)}")
+        try:
+            proc = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            self.logger.info(proc.stdout.strip())
+            if proc.stderr:
+                self.logger.debug(proc.stderr.strip())
+        except subprocess.CalledProcessError as e:
+            self.logger.error(f"Clinical utility script failed (code {e.returncode}): {e.stderr}")
+            raise
+        # Load the generated report
+        report_path = project_root / 'bhr_memtrax_results' / 'clinical_utility_report.json'
+        try:
+            with open(report_path, 'r') as f:
+                report = json.load(f)
+            self.results['analysis']['clinical_utility'] = report
+            self.logger.info(f"✅ Clinical utility report ingested: {report_path}")
+        except Exception as e:
+            self.logger.warning(f"Failed to load clinical utility report: {e}")
     
     def _execute_synthesis_phase(self) -> Dict[str, Any]:
         """Execute AI-powered synthesis phase"""

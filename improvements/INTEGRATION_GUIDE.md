@@ -468,3 +468,18 @@ y = (XY['QID1-13']==1.0).astype(int)
 model, metrics = train_calibrated_logistic(X.select_dtypes('number'), y)
 print(metrics)
 ```
+
+## Agent Rulebook: Clinical Utility Pipeline
+
+- When target prevalence ≤ 10% and baseline labels exist, prefer the clinical-utility pipeline.
+- Use composite baseline cognitive impairment (OR of QID1-5/1-12/1-13/1-22/1-23 at m00); exclude non-cognitive (Parkinson’s, Stroke).
+- Always aggregate across timepoints; add sequence/fatigue (first/last third means, fatigue effect), variability (std), test count, RT slope.
+- Enrich demographics from BHR sources; add interactions (age×RT, age×variability) and cognitive reserve proxy.
+- Merge self/informant ECOG (+ADL) and residualize global/per-domain means on age/education.
+- Modeling defaults:
+  - Baseline: calibrated logistic with MI feature selection (k~50–150) + age/edu splines.
+  - Lift: calibrated stacking (logit + HistGB + XGB with tuned scale_pos_weight), elastic-net meta-learner over base probabilities + 3 raw features (CognitiveScore_mean, long_reliability_change, Age_Baseline).
+- Evaluation: subject-level CV; decision curves; subgroup AUC by age/education; report PR-AUC and delta over demographics.
+- Quality: apply Ashford (status=Collected, accuracy ≥0.65, RT in [0.5, 2.5]); optionally winsorize RTs [0.4, 2.0] for robustness.
+
+To enable: set `analysis.clinical_utility_mode: true` in `config/config.yaml` (default true). The orchestrator will run `bhr_memtrax_clinical_utility.py`, ingest `bhr_memtrax_results/clinical_utility_report.json`, and expose results under `results.analysis.clinical_utility`.

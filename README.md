@@ -4,7 +4,7 @@
 
 ## 🎯 Overview
 
-The Agentic Alzheimer's Analyzer is a revolutionary open-source framework that democratizes advanced Alzheimer's research through autonomous AI agents. This system transforms cognitive assessment data analysis from a months-long expert process into hours of autonomous computation, making sophisticated research capabilities accessible to any researcher worldwide.
+The Agentic Alzheimer's Analyzer is an open-source framework that democratizes advanced Alzheimer's research through autonomous AI agents. This system streamlines cognitive assessment data analysis from a months-long expert process into hours of autonomous computation, making sophisticated research capabilities accessible to researchers.
 
 ### Core Value Proposition
 - **Research Acceleration**: Reduces analysis time from months to hours
@@ -114,7 +114,7 @@ python run_analysis.py --offline --data-path training_data/addi_workbench_export
 - **Extensible Framework**: New assessment types and research domains easily added
 - **Pure AI Discovery**: No fallback rules - all insights generated through agentic AI analysis
 
-### **Research Revolution**
+### **Research Advances**
 - **Multi-modal Integration**: Seamlessly combines cognitive assessments, demographics, and literature
 - **Scale Processing**: Handles hundreds of thousands of subjects automatically
 - **Real-world Evidence**: Processes actual clinical datasets, not just research samples

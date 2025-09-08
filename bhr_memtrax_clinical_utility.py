@@ -34,6 +34,13 @@ from improvements.calibrated_logistic import train_calibrated_logistic
 # Fast mode settings
 FAST_MODE = True
 
+# Data and output locations
+DATA_DIR = Path("../bhr/BHR-ALL-EXT_Mem_2022")
+OUT_DIR = Path("bhr_memtrax_results")
+OUT_DIR.mkdir(exist_ok=True)
+
+COGNITIVE_QIDS = ['QID1-5', 'QID1-12', 'QID1-13', 'QID1-22', 'QID1-23']
+
 # Optional: XGBoost for deeper runs
 try:
     from xgboost import XGBClassifier  # type: ignore

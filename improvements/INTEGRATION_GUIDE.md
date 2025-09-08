@@ -414,3 +414,57 @@ The enhanced framework maintains its Alzheimer's focus while becoming much more 
 
 *Integration Guide - Advanced Alzheimer's Analysis Framework*  
 *Designed for maximum research impact and clinical utility*
+
+## New reusable modules (Sept 2025)
+
+- demographics_enrichment.py
+  - enrich_demographics(data_dir: Path, base: pd.DataFrame, subject_col='SubjectCode') -> pd.DataFrame
+  - Merges age, education, gender from BHR files (accepts 'Code'), adds derived interactions and reserve proxy.
+
+- sequence_feature_engineering.py
+  - compute_sequence_features(df: pd.DataFrame, subject_col='SubjectCode', reaction_col='ReactionTimes') -> pd.DataFrame
+  - Builds sequence/fatigue/reliability features used in best logistic baseline.
+
+- target_curation_bhr.py
+  - curate_cognitive_target(medical_df, target_qid='QID1-13', subject_col='SubjectCode', timepoint_col='TimepointCode') -> (df, y)
+  - Filters to baseline and excludes non-cognitive QIDs.
+
+- ashford_policy.py
+  - apply_ashford(memtrax_df, accuracy_threshold=0.65, rt_min=0.5, rt_max=2.5, status_col='Status') -> pd.DataFrame
+  - Standard quality filter step.
+
+- calibrated_logistic.py
+  - train_calibrated_logistic(X, y, k_features=200) -> (model, metrics)
+  - Impute/scale/MI select/logistic with isotonic calibration and threshold tuning.
+
+### Example usage
+```python
+from pathlib import Path
+import pandas as pd
+from improvements.ashford_policy import apply_ashford
+from improvements.demographics_enrichment import enrich_demographics
+from improvements.sequence_feature_engineering import compute_sequence_features
+from improvements.target_curation_bhr import curate_cognitive_target
+from improvements.calibrated_logistic import train_calibrated_logistic
+
+# Load
+mem = pd.read_csv(data_dir/"MemTrax.csv", low_memory=False)
+med = pd.read_csv(data_dir/"BHR_MedicalHx.csv", low_memory=False)
+
+# Quality and features
+mem_q = apply_ashford(mem, accuracy_threshold=0.65)
+seq = compute_sequence_features(mem_q)
+agg = mem_q.groupby('SubjectCode').mean(numeric_only=True).reset_index()
+X_df = agg.merge(seq, on='SubjectCode', how='left')
+X_df = enrich_demographics(data_dir, X_df)
+
+# Labels
+med_b, y = curate_cognitive_target(med, target_qid='QID1-13')
+XY = X_df.merge(med_b[['SubjectCode', 'QID1-13']], on='SubjectCode', how='inner')
+X = XY.drop(columns=['QID1-13'])
+y = (XY['QID1-13']==1.0).astype(int)
+
+# Train
+model, metrics = train_calibrated_logistic(X.select_dtypes('number'), y)
+print(metrics)
+```

@@ -469,6 +469,39 @@ model, metrics = train_calibrated_logistic(X.select_dtypes('number'), y)
 print(metrics)
 ```
 
+## Anti-Leakage Practices (New)
+
+To prevent optimistic bias and ensure reproducible metrics, follow these rules:
+
+- Use a held-out evaluation: split with stratified train/test (e.g., 80/20) and report AUC/PR-AUC on the held-out test set.
+- Fit transforms only on training data: e.g., fit `SplineTransformer` on training, then apply to test.
+- For stacking/ensembles, train meta-learners on out-of-fold (OOF) predictions from base learners; for test, use base learners refit on full training.
+- Calibrate probabilities within CV folds (e.g., `CalibratedClassifierCV` with `cv>=3`), not on the same data you evaluate.
+
+Utilities available in `improvements.anti_leakage`:
+
+- `stratified_holdout_split(X, y, test_size=0.2)`: train/test split.
+- `add_splines_train_only(X_train, X_test, cols, n_knots=5)`: fit splines on train, apply to test.
+- `oof_calibrated_probas(est_builder, X_train, y_train, n_splits=5, method='isotonic')`: returns OOF predictions and a calibrated model fit on full train.
+- `evaluate_holdout(y_true, y_proba)`: returns AUC and PR-AUC.
+
+Example (pseudo-code):
+
+```python
+from improvements import stratified_holdout_split, add_splines_train_only, oof_calibrated_probas
+
+X_tr, X_te, y_tr, y_te = stratified_holdout_split(X, y)
+X_tr, X_te = add_splines_train_only(X_tr, X_te, ['Age_Baseline'])
+
+def build_logit():
+    return Pipeline([...])
+
+oof_logit, cal_logit = oof_calibrated_probas(build_logit, X_tr, y_tr)
+proba_te = cal_logit.predict_proba(X_te)[:, 1]
+```
+
+These policies should be applied by default in the agent's modeling flows when prevalence is low or when stacking is used.
+
 ## Agent Rulebook: Clinical Utility Pipeline
 
 - When target prevalence ≤ 10% and baseline labels exist, prefer the clinical-utility pipeline.

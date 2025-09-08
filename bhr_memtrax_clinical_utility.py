@@ -25,6 +25,7 @@ from sklearn.feature_selection import SelectKBest, mutual_info_classif
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.calibration import CalibratedClassifierCV
+from sklearn.model_selection import train_test_split, StratifiedKFold
 
 from improvements.ashford_policy import apply_ashford
 from improvements.sequence_feature_engineering import compute_sequence_features
@@ -190,6 +191,43 @@ def build_features(mem_q: pd.DataFrame, use_winsorize: bool = False) -> pd.DataF
     return X_df
 
 
+def add_splines_train_test(X_train: pd.DataFrame, X_test: pd.DataFrame, cols: List[str], n_knots: int) -> (pd.DataFrame, pd.DataFrame):
+    Xtr = X_train.copy()
+    Xte = X_test.copy()
+    for col in cols:
+        if col in Xtr.columns:
+            try:
+                st = SplineTransformer(n_knots=n_knots, degree=3, include_bias=False)
+                vals_tr = Xtr[[col]].to_numpy()
+                vals_te = Xte[[col]].to_numpy() if col in Xte.columns else None
+                if np.isfinite(vals_tr).sum() >= len(vals_tr):
+                    st.fit(vals_tr)
+                    spl_tr = st.transform(vals_tr)
+                    spl_te = st.transform(vals_te) if vals_te is not None else None
+                    for i in range(spl_tr.shape[1]):
+                        Xtr[f'{col}_spline_{i+1}'] = spl_tr[:, i]
+                        if spl_te is not None:
+                            Xte[f'{col}_spline_{i+1}'] = spl_te[:, i]
+            except Exception:
+                continue
+    return Xtr, Xte
+
+
+def oof_calibrated_probas(estimator_builder, X_train: pd.DataFrame, y_train: pd.Series, n_splits: int = 5, method: str = 'isotonic', random_state: int = 42):
+    kf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
+    oof = np.zeros(len(y_train))
+    for tr_idx, val_idx in kf.split(X_train, y_train):
+        est = estimator_builder()
+        cal = CalibratedClassifierCV(est, cv=3, method=method)
+        cal.fit(X_train.iloc[tr_idx], y_train.iloc[tr_idx])
+        oof[val_idx] = cal.predict_proba(X_train.iloc[val_idx])[:, 1]
+    # Fit final model on full train for test-time inference
+    final_est = estimator_builder()
+    cal_full = CalibratedClassifierCV(final_est, cv=3, method=method)
+    cal_full.fit(X_train, y_train)
+    return oof, cal_full
+
+
 LEAN_COLUMNS = [
     'CorrectResponsesRT_mean', 'CorrectPCT_mean', 'IncorrectRejectionsN_mean',
     'CognitiveScore_mean',
@@ -345,7 +383,7 @@ def main(mode: str = 'fast') -> int:
         log(f"📈 Fast pipeline: AUC={auc:.3f}, PR-AUC={pr_auc:.3f}")
         return 0
 
-    # STANDARD/FULL MODES (deeper)
+    # STANDARD/FULL MODES (deeper; use held-out test to avoid leakage)
     log("[3/9] Building features (nowin + winsor)...")
     X_df_nowin = build_features(mem_q, use_winsorize=False)
     X_df_win = build_features(mem_q, use_winsorize=True)
@@ -367,120 +405,137 @@ def main(mode: str = 'fast') -> int:
     candidates = [(X_nowin, y_nowin, cols_nowin, False), (X_win, y_win, cols_win, True)]
 
     best_overall = {'auc': -1.0}
-    for X, y, cols, used_win in candidates:
-        if len(y) == 0:
+    for X_all, y_all, cols, used_win in candidates:
+        if len(y_all) == 0:
             continue
-        log(f"[4/9] Candidate dataset (winsorize={'on' if used_win else 'off'}): n={len(y):,}")
+        log(f"[4/9] Candidate dataset (winsorize={'on' if used_win else 'off'}): n={len(y_all):,}")
 
-        # Splines
-        X_aug = X.copy()
+        # Stratified split
+        X_tr, X_te, y_tr, y_te = train_test_split(
+            X_all, y_all, test_size=0.2, stratify=y_all, random_state=42
+        )
+
+        # Add splines fitted on train only
         knots = 5 if mode == 'standard' else 6
-        for col in ['Age_Baseline', 'YearsEducationUS_Converted']:
-            if col in X_aug.columns:
-                try:
-                    st = SplineTransformer(n_knots=knots, degree=3, include_bias=False)
-                    vals = X_aug[[col]].to_numpy()
-                    if np.isfinite(vals).sum() >= len(vals):
-                        spl = st.fit_transform(vals)
-                        for i in range(spl.shape[1]):
-                            X_aug[f'{col}_spline_{i+1}'] = spl[:, i]
-                except Exception:
-                    pass
+        X_tr_aug, X_te_aug = add_splines_train_test(
+            X_tr, X_te, ['Age_Baseline', 'YearsEducationUS_Converted'], knots
+        )
 
-        # Logistic sweep (mutual info k)
+        # Logistic sweep (mutual info k) on train; evaluate on test
         k_list = [50, 100, 150] if mode == 'standard' else [50, 100, 150, 200, 300]
         log(f"[5/9] Logistic sweep over k={k_list}...")
         best_log = {'auc': -1.0}
         for k in k_list:
-            k_use = min(k, X_aug.shape[1])
-            model, _ = train_calibrated_logistic(X_aug, y, k_features=k_use)
-            y_proba = model.predict_proba(X_aug)[:, 1]
-            auc_log = roc_auc_score(y, y_proba)
-            pr_log = average_precision_score(y, y_proba)
+            k_use = min(k, X_tr_aug.shape[1])
+            model, _ = train_calibrated_logistic(X_tr_aug, y_tr, k_features=k_use)
+            y_proba_te = model.predict_proba(X_te_aug)[:, 1]
+            auc_log = roc_auc_score(y_te, y_proba_te)
+            pr_log = average_precision_score(y_te, y_proba_te)
             if auc_log > best_log['auc']:
-                best_log = {'model': model, 'proba': y_proba, 'auc': auc_log, 'pr': pr_log, 'k': k_use}
-        log(f"      best logistic AUC={best_log['auc']:.3f} (k={best_log['k']})")
+                best_log = {'model': model, 'proba_te': y_proba_te, 'auc': auc_log, 'pr': pr_log, 'k': k_use}
+        log(f"      best logistic AUC(test)={best_log['auc']:.3f} (k={best_log['k']})")
 
-        # Base 1: calibrated logistic for meta inputs
-        base_logit = Pipeline([
-            ("impute", SimpleImputer(strategy='median')),
-            ("scale", StandardScaler(with_mean=False)),
-            ("select", SelectKBest(mutual_info_classif, k=min(100, X_aug.shape[1]))),
-            ("clf", LogisticRegression(max_iter=2000, class_weight='balanced', solver='lbfgs')),
-        ])
+        # Define estimator builders
+        def build_base_logit():
+            return Pipeline([
+                ("impute", SimpleImputer(strategy='median')),
+                ("scale", StandardScaler(with_mean=False)),
+                ("select", SelectKBest(mutual_info_classif, k=min(100, X_tr_aug.shape[1]))),
+                ("clf", LogisticRegression(max_iter=2000, class_weight='balanced', solver='lbfgs')),
+            ])
+
+        def build_hgb(lr: float, leafs: int):
+            return Pipeline([
+                ("impute", SimpleImputer(strategy='median')),
+                ("clf", HistGradientBoostingClassifier(random_state=42, max_leaf_nodes=leafs, learning_rate=lr, max_depth=3))
+            ])
+
         cal_cv = 3 if mode == 'standard' else 5
-        cal_logit = CalibratedClassifierCV(base_logit, cv=cal_cv, method='isotonic')
-        cal_logit.fit(X_aug, y)
-        p_logit = cal_logit.predict_proba(X_aug)[:, 1]
 
-        # Base 2: HGB grid
-        log("[6/9] HGB grid search...")
-        best_hgb = {'auc': -1.0, 'desc': ''}
+        # OOF for base logit
+        oof_logit, cal_logit_full = oof_calibrated_probas(build_base_logit, X_tr_aug, y_tr, n_splits=cal_cv, method='isotonic')
+
+        # HGB grid with OOF
+        log("[6/9] HGB grid search with OOF...")
+        best_hgb = {'auc': -1.0, 'desc': '', 'oof': None, 'cal_full': None}
         lrs = [0.03, 0.05, 0.1] if mode == 'standard' else [0.02, 0.03, 0.05, 0.1]
         leaves_list = [31, 63] if mode == 'standard' else [31, 63, 127]
         for lr in lrs:
             for leafs in leaves_list:
-                hgb = HistGradientBoostingClassifier(random_state=42, max_leaf_nodes=leafs, learning_rate=lr, max_depth=3)
-                hgb_pipe = Pipeline([("impute", SimpleImputer(strategy='median')), ("clf", hgb)])
-                cal_hgb = CalibratedClassifierCV(hgb_pipe, cv=cal_cv, method='isotonic')
-                cal_hgb.fit(X_aug, y)
-                ph = cal_hgb.predict_proba(X_aug)[:, 1]
-                a = roc_auc_score(y, ph)
+                def builder():
+                    return build_hgb(lr, leafs)
+                oof_h, cal_h_full = oof_calibrated_probas(builder, X_tr_aug, y_tr, n_splits=cal_cv, method='isotonic')
+                # Evaluate simple meta over two OOF columns for selection
+                M_oof_tmp = np.column_stack([oof_logit, oof_h])
+                a = roc_auc_score(y_tr, 0.5 * M_oof_tmp[:, 0] + 0.5 * M_oof_tmp[:, 1])
                 if a > best_hgb['auc']:
-                    best_hgb = {'model': cal_hgb, 'proba': ph, 'auc': a, 'desc': f'hgb lr={lr}, leaves={leafs}'}
-        p_hgb = best_hgb['proba']
+                    best_hgb = {'auc': a, 'desc': f'hgb lr={lr}, leaves={leafs}', 'oof': oof_h, 'cal_full': cal_h_full}
 
-        # Base 3: XGB (full only)
-        p_xgb = None
-        best_xgb_desc = None
+        # Optional XGB with OOF (full mode)
+        oof_xgb, cal_xgb_full, xgb_desc = (None, None, None)
         if mode == 'full' and XGB_OK:
-            log("[7/9] XGB deep grid search (this can take a long time)...")
-            pos = int(y.sum())
-            neg = int((~y.astype(bool)).sum())
+            log("[7/9] XGB deep grid search with OOF (this can take a long time)...")
+            pos = int(y_tr.sum())
+            neg = int((~y_tr.astype(bool)).sum())
             spw_base = (neg / max(pos, 1))
-            best_xgb_auc = -1.0
+            best_auc_tmp = -1.0
             for md in [3, 4, 5, 6]:
                 for eta in [0.02, 0.03, 0.05, 0.1]:
                     for ss in [0.7, 0.8, 0.9, 1.0]:
                         for cs in [0.7, 0.8, 0.9, 1.0]:
                             for spw in [spw_base * 0.8, spw_base, spw_base * 1.2]:
-                                xgb = XGBClassifier(
-                                    n_estimators=800,
-                                    max_depth=md,
-                                    learning_rate=eta,
-                                    subsample=ss,
-                                    colsample_bytree=cs,
-                                    reg_lambda=1.0,
-                                    objective='binary:logistic',
-                                    tree_method='hist',
-                                    eval_metric='auc',
-                                    random_state=42,
-                                    scale_pos_weight=spw
-                                )
-                                xgb_pipe = Pipeline([("impute", SimpleImputer(strategy='median')), ("clf", xgb)])
-                                cal_xgb = CalibratedClassifierCV(xgb_pipe, cv=cal_cv, method='isotonic')
-                                cal_xgb.fit(X_aug, y)
-                                px = cal_xgb.predict_proba(X_aug)[:, 1]
-                                a = roc_auc_score(y, px)
-                                if a > best_xgb_auc:
-                                    best_xgb_auc = a
-                                    p_xgb = px
-                                    best_xgb_desc = f"xgb md={md}, lr={eta}, ss={ss}, cs={cs}, spw={spw:.2f}"
+                                def build_xgb():
+                                    return Pipeline([
+                                        ("impute", SimpleImputer(strategy='median')),
+                                        ("clf", XGBClassifier(
+                                            n_estimators=800,
+                                            max_depth=md,
+                                            learning_rate=eta,
+                                            subsample=ss,
+                                            colsample_bytree=cs,
+                                            reg_lambda=1.0,
+                                            objective='binary:logistic',
+                                            tree_method='hist',
+                                            eval_metric='auc',
+                                            random_state=42,
+                                            scale_pos_weight=spw
+                                        ))
+                                    ])
+                                oof_tmp, cal_full_tmp = oof_calibrated_probas(build_xgb, X_tr_aug, y_tr, n_splits=cal_cv, method='isotonic')
+                                # quick internal AUC on OOF
+                                a = roc_auc_score(y_tr, oof_tmp)
+                                if a > best_auc_tmp:
+                                    best_auc_tmp = a
+                                    oof_xgb, cal_xgb_full = oof_tmp, cal_full_tmp
+                                    xgb_desc = f"xgb md={md}, lr={eta}, ss={ss}, cs={cs}, spw={spw:.2f}"
 
-        # Meta dataset
-        meta_cols = [p_logit, p_hgb]
+        # Build meta features (OOF on train)
+        oof_list = [oof_logit, best_hgb['oof']]
         meta_names = ['p_logit', 'p_hgb']
-        if p_xgb is not None:
-            meta_cols.append(p_xgb)
+        if oof_xgb is not None:
+            oof_list.append(oof_xgb)
             meta_names.append('p_xgb')
-        M = np.column_stack(meta_cols)
-        M_df = pd.DataFrame(M, columns=meta_names, index=X_aug.index)
+        M_tr = np.column_stack(oof_list)
+        M_tr_df = pd.DataFrame(M_tr, columns=meta_names, index=X_tr_aug.index)
         for raw in ['CognitiveScore_mean', 'long_reliability_change', 'Age_Baseline']:
-            if raw in X_aug.columns:
-                M_df[raw] = X_aug[raw].fillna(X_aug[raw].median())
+            if raw in X_tr_aug.columns:
+                M_tr_df[raw] = X_tr_aug[raw].fillna(X_tr_aug[raw].median())
 
-        # Meta-learner grid: elastic-net logistic
-        log("[8/9] Meta-learner grid search (elastic-net logistic)...")
+        # Test meta inputs from full-calibrated base models
+        p_logit_te = cal_logit_full.predict_proba(X_te_aug)[:, 1]
+        p_hgb_te = best_hgb['cal_full'].predict_proba(X_te_aug)[:, 1]
+        meta_te_cols = [p_logit_te, p_hgb_te]
+        if cal_xgb_full is not None:
+            p_xgb_te = cal_xgb_full.predict_proba(X_te_aug)[:, 1]
+            meta_te_cols.append(p_xgb_te)
+        M_te = np.column_stack(meta_te_cols)
+        M_te_df = pd.DataFrame(M_te, columns=meta_names[:M_te.shape[1]], index=X_te_aug.index)
+        for raw in ['CognitiveScore_mean', 'long_reliability_change', 'Age_Baseline']:
+            if raw in X_te_aug.columns:
+                M_te_df[raw] = X_te_aug[raw].fillna(X_te_aug[raw].median())
+
+        # Meta-learner grid on OOF-train, evaluate on test
+        log("[8/9] Meta-learner grid search (elastic-net logistic) on OOF train, evaluate on test...")
         best_meta = {'auc': -1.0}
         l1r_list = [0.1, 0.5] if mode == 'standard' else [0.05, 0.1, 0.3, 0.5, 0.7]
         cvals = [0.5, 1.0, 2.0] if mode == 'standard' else [0.25, 0.5, 1.0, 2.0, 4.0]
@@ -492,55 +547,53 @@ def main(mode: str = 'fast') -> int:
                     ("clf", LogisticRegression(max_iter=3000, class_weight='balanced', solver='saga', penalty='elasticnet', l1_ratio=l1r, C=cval)),
                 ])
                 cal_meta = CalibratedClassifierCV(meta_pipe, cv=cal_cv, method='isotonic')
-                cal_meta.fit(M_df, y)
-                pm = cal_meta.predict_proba(M_df)[:, 1]
-                a = roc_auc_score(y, pm)
+                cal_meta.fit(M_tr_df, y_tr)
+                pm_te = cal_meta.predict_proba(M_te_df)[:, 1]
+                a = roc_auc_score(y_te, pm_te)
                 if a > best_meta['auc']:
-                    best_meta = {'model': cal_meta, 'proba': pm, 'auc': a, 'desc': f'enet l1r={l1r}, C={cval}'}
+                    best_meta = {'model': cal_meta, 'proba_te': pm_te, 'auc': a, 'desc': f'enet l1r={l1r}, C={cval}'}
 
         auc_stack = best_meta['auc']
-        pr_auc_stack = average_precision_score(y, best_meta['proba']) if best_meta['proba'] is not None else -1.0
-        base_desc = f"{best_hgb['desc']}" + (f", {best_xgb_desc}" if best_xgb_desc else "")
-        best_stack_name = f"Meta({best_meta['desc']}) over [logit, hgb{'+xgb' if p_xgb is not None else ''}] | {base_desc}"
+        pr_auc_stack = average_precision_score(y_te, best_meta['proba_te']) if best_meta['proba_te'] is not None else -1.0
+        base_desc = f"{best_hgb['desc']}" + (f", {xgb_desc}" if xgb_desc else "")
+        best_stack_name = f"Meta({best_meta['desc']}) over [logit, hgb{'+xgb' if oof_xgb is not None else ''}] | {base_desc}"
 
-        # Choose vs best logistic
+        # Choose vs best logistic (both on test)
         if auc_stack > best_log['auc']:
             chosen_name = best_stack_name
             chosen_auc = auc_stack
             chosen_pr = pr_auc_stack
-            chosen_proba = best_meta['proba']
-            chosen_metrics = None
+            chosen_proba_te = best_meta['proba_te']
         else:
             chosen_name = f"CalibratedLogistic(k={best_log['k']})"
             chosen_auc = best_log['auc']
             chosen_pr = best_log['pr']
-            chosen_proba = best_log['proba']
-            chosen_metrics = None
+            chosen_proba_te = best_log['proba_te']
 
         if chosen_auc > best_overall.get('auc', -1):
             best_overall = {
                 'name': chosen_name + ("+winsor" if used_win else ""),
                 'auc': chosen_auc,
                 'pr': chosen_pr,
-                'proba': chosen_proba,
-                'X': X_aug,
-                'y': y,
+                'proba_te': chosen_proba_te,
+                'X_te_aug': X_te_aug,
+                'y_te': y_te,
                 'features': cols
             }
 
     if best_overall['auc'] <= 0:
         raise RuntimeError("No viable model configuration produced metrics.")
 
-    X = best_overall['X']
-    y = best_overall['y']
-    best_proba = best_overall['proba']
+    X = best_overall['X_te_aug']
+    y = best_overall['y_te']
+    y_proba = best_overall['proba_te']
     cols = best_overall['features']
     auc = best_overall['auc']
     pr_auc = best_overall['pr']
 
     log("[9/9] Computing decision curves and subgroup metrics...")
     thresholds = np.linspace(0.05, 0.5, 20 if mode == 'full' else 15)
-    dc = decision_curve(y.to_numpy(), best_proba, thresholds)
+    dc = decision_curve(y.to_numpy(), y_proba, thresholds)
     plt.figure(figsize=(8, 6))
     plt.plot(dc['threshold'], dc['net_benefit'], label='Model')
     plt.plot(dc['threshold'], dc['all'], label='Treat All', linestyle='--')
@@ -555,7 +608,7 @@ def main(mode: str = 'fast') -> int:
     plt.savefig(dcurve_path, dpi=300)
     plt.close()
 
-    sub_df = subgroup_metrics(X, y, best_proba)
+    sub_df = subgroup_metrics(X, y, y_proba)
     sub_path = OUT_DIR / 'subgroup_metrics.csv'
     sub_df.to_csv(sub_path, index=False)
 
@@ -578,7 +631,7 @@ def main(mode: str = 'fast') -> int:
     with open(out_json, 'w') as f:
         json.dump(report, f, indent=2)
     log(f"💾 Saved clinical report: {out_json}")
-    log(f"📈 {mode.title()} pipeline: AUC={auc:.3f}, PR-AUC={pr_auc:.3f}")
+    log(f"📈 {mode.title()} pipeline (held-out): AUC={auc:.3f}, PR-AUC={pr_auc:.3f}")
     return 0
 
 

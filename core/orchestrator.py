@@ -343,7 +343,7 @@ Analysis cannot proceed without resolving credit/billing issues.
             self.results['analysis'] = analysis_results
             
             # Optional: Clinical utility mode (composite labels, lean features, calibrated stacking)
-            if self.config.get('analysis', {}).get('clinical_utility_mode', True):
+            if self._should_run_clinical_utility_mode():
                 try:
                     self.logger.info("\n=== CLINICAL UTILITY MODE (composite target, calibrated stack) ===")
                     self._run_clinical_utility_mode()
@@ -474,6 +474,78 @@ Analysis cannot proceed without resolving credit/billing issues.
             self.logger.info(f"✅ Clinical utility report ingested: {report_path}")
         except Exception as e:
             self.logger.warning(f"Failed to load clinical utility report: {e}")
+
+    def _should_run_clinical_utility_mode(self) -> bool:
+        """Decide whether to run clinical utility mode based on config and dataset auto-detection.
+        Supports values: True/False, 'on'/'off', or 'auto' (default).
+        Auto-detection looks for BHR markers such as MemTrax.csv or BHR_MedicalHx.csv in configured data sources
+        or nearby ../bhr directories.
+        """
+        try:
+            val = self.config.get('analysis', {}).get('clinical_utility_mode', 'auto')
+            # Normalize bools and strings
+            if isinstance(val, bool):
+                return val
+            if isinstance(val, str):
+                v = val.lower().strip()
+                if v in {'on', 'true', 'yes'}:
+                    return True
+                if v in {'off', 'false', 'no'}:
+                    return False
+            # Auto-detect
+            script_exists = (project_root / 'bhr_memtrax_clinical_utility.py').exists()
+            if not script_exists:
+                self.logger.info("Clinical utility auto-mode: script not present; skipping")
+                return False
+
+            markers = {
+                'MemTrax.csv',
+                'BHR_MedicalHx.csv',
+                'BHR_EverydayCognition.csv',
+                'BHR_SP_ECog.csv',
+                'BHR_SP_ADL.csv'
+            }
+            # Search configured data sources
+            found = False
+            ds_list = self.config.get('dataset', {}).get('data_sources', [])
+            for ds in ds_list:
+                p_raw = ds.get('path') if isinstance(ds, dict) else None
+                if not p_raw:
+                    continue
+                p = Path(p_raw).expanduser().resolve()
+                if not p.exists():
+                    continue
+                for m in markers:
+                    try:
+                        if any(p.rglob(m)):
+                            found = True
+                            break
+                    except Exception:
+                        # Some filesystems may block deep rglob; skip
+                        continue
+                if found:
+                    break
+            # Secondary: common sibling dirs
+            if not found:
+                for root in [project_root.parent / 'bhr', project_root.parent / 'BHR', project_root.parent]:
+                    try:
+                        if root.exists():
+                            for m in markers:
+                                if any(root.rglob(m)):
+                                    found = True
+                                    break
+                        if found:
+                            break
+                    except Exception:
+                        continue
+            if not found:
+                self.logger.info("Clinical utility auto-mode: BHR markers not detected; skipping")
+            else:
+                self.logger.info("Clinical utility auto-mode: BHR markers detected; will run clinical utility pipeline")
+            return found
+        except Exception as e:
+            self.logger.warning(f"Clinical utility auto-mode detection failed: {e}")
+            return False
     
     def _execute_synthesis_phase(self) -> Dict[str, Any]:
         """Execute AI-powered synthesis phase"""

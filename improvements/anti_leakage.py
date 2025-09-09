@@ -59,4 +59,14 @@ def oof_calibrated_probas(estimator_builder: Callable[[], object], X_train: pd.D
 def evaluate_holdout(y_true: pd.Series, y_proba: np.ndarray) -> dict:
     auc = roc_auc_score(y_true, y_proba)
     pr = average_precision_score(y_true, y_proba)
-    return {'auc': float(auc), 'pr_auc': float(pr)} 
+    return {'auc': float(auc), 'pr_auc': float(pr)}
+
+
+def drop_all_nan_columns(X_train: pd.DataFrame, X_test: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Drop columns that are entirely NaN in training and align test to remaining columns.
+    Prevents downstream selectors from requesting k > n_features after imputers skip empty columns.
+    """
+    keep_cols = X_train.columns[X_train.notna().sum(axis=0) > 0]
+    Xtr = X_train[keep_cols].copy()
+    Xte = X_test.reindex(columns=keep_cols).copy()
+    return Xtr, Xte 

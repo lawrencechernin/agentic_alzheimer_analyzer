@@ -31,6 +31,7 @@ from improvements.ashford_policy import apply_ashford
 from improvements.sequence_feature_engineering import compute_sequence_features
 from improvements.demographics_enrichment import enrich_demographics
 from improvements.calibrated_logistic import train_calibrated_logistic
+from improvements.anti_leakage import drop_all_nan_columns
 
 # Fast mode settings
 FAST_MODE = True
@@ -414,6 +415,9 @@ def main(mode: str = 'fast') -> int:
         X_tr, X_te, y_tr, y_te = train_test_split(
             X_all, y_all, test_size=0.2, stratify=y_all, random_state=42
         )
+
+        # Drop all-NaN cols based on training; align test
+        X_tr, X_te = drop_all_nan_columns(X_tr, X_te)
 
         # Add splines fitted on train only
         knots = 5 if mode == 'standard' else 6

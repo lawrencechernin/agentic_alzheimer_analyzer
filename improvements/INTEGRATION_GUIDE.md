@@ -502,6 +502,19 @@ proba_te = cal_logit.predict_proba(X_te)[:, 1]
 
 These policies should be applied by default in the agent's modeling flows when prevalence is low or when stacking is used.
 
+## Reusable Utilities (New)
+
+- Winsorization (`improvements.winsorization.winsorize_reaction_times`): clip `ReactionTimes` strings to [0.4, 2.0] to reduce outlier impact.
+- Informant Residuals (`improvements.informant_residuals.compute_informant_residuals`): merge ECOG/SP ECOG/SP ADL baseline aggregates and compute residuals adjusted for age/education.
+- Decision Curve (`improvements.decision_curve.decision_curve`): compute net benefit across thresholds for decision curve analysis.
+
+Example:
+```python
+from improvements import winsorize_reaction_times, compute_informant_residuals, decision_curve
+```
+
+These complement the anti-leakage utilities to standardize best practices across datasets.
+
 ## Agent Rulebook: Clinical Utility Pipeline
 
 - When target prevalence ≤ 10% and baseline labels exist, prefer the clinical-utility pipeline.

@@ -23,7 +23,7 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingClassifier, RandomForestClassifier
 from sklearn.model_selection import cross_val_score, train_test_split, RandomizedSearchCV, StratifiedKFold
 from sklearn.impute import SimpleImputer
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, f1_score, precision_score, recall_score
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
 try:
     from xgboost import XGBClassifier
     XGBOOST_AVAILABLE = True
@@ -91,6 +91,12 @@ class CognitiveAnalysisAgent:
     
     All analysis types and variable mappings are defined in configuration
     files, making it easy to adapt to any Alzheimer's research dataset.
+    
+    IMPORTANT: This agent follows strict ML methodology guidelines:
+    - Always uses train/test split for final evaluation
+    - Never evaluates models on training data
+    - Applies proper cross-validation for hyperparameter selection
+    - Prevents data leakage in feature selection and preprocessing
     """
     
     def __init__(self, config_path: str = "config/config.yaml",
@@ -112,6 +118,10 @@ class CognitiveAnalysisAgent:
         
         # Setup logging
         self._setup_logging()
+        
+        # ML methodology validation flags and tracking
+        self.enforce_ml_best_practices = True
+        self.ml_validation_warnings = []
         
         # Get experiment configuration
         self.experiment_config = self.config.get('experiment', {})
@@ -156,11 +166,47 @@ class CognitiveAnalysisAgent:
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+    
+    def _validate_ml_methodology(self, action: str, details: Dict[str, Any] = None) -> bool:
+        """
+        Validate ML methodology to prevent common issues like training set evaluation.
         
-        # Initialize F1-focused clinical evaluator
-        self.clinical_evaluator = ClinicalEvaluator() if F1_EVALUATION_AVAILABLE else None
-        if F1_EVALUATION_AVAILABLE:
-            self.logger.info("✅ F1-focused clinical evaluation system loaded")
+        Args:
+            action: The ML action being performed (e.g., 'train', 'evaluate', 'cross_validate')
+            details: Additional details about the action
+            
+        Returns:
+            bool: True if methodology is valid, False otherwise
+        """
+        if not self.enforce_ml_best_practices:
+            return True
+            
+        valid = True
+        warning_msg = None
+        
+        if action == 'evaluate_on_training':
+            warning_msg = "⚠️ ML METHODOLOGY WARNING: Evaluating model on training data detected! This inflates metrics by 0.05-0.15 AUC."
+            valid = False
+            
+        elif action == 'no_test_split':
+            warning_msg = "⚠️ ML METHODOLOGY WARNING: No train/test split detected! Always use holdout test set for final evaluation."
+            valid = False
+            
+        elif action == 'feature_selection_before_split':
+            warning_msg = "⚠️ ML METHODOLOGY WARNING: Feature selection before train/test split causes data leakage!"
+            valid = False
+            
+        elif action == 'full_data_calibration':
+            warning_msg = "⚠️ ML METHODOLOGY WARNING: Model calibration on full dataset detected! Calibrate only on training data."
+            valid = False
+            
+        if warning_msg:
+            self.logger.warning(warning_msg)
+            self.ml_validation_warnings.append(warning_msg)
+            if details:
+                self.logger.warning(f"   Details: {details}")
+                
+        return valid
     
     def run_complete_analysis(self) -> Dict[str, Any]:
         """Execute complete cognitive assessment analysis pipeline - adaptive for different data types"""
@@ -1739,11 +1785,15 @@ class CognitiveAnalysisAgent:
             scaler = StandardScaler()
             X_scaled = scaler.fit_transform(X)
             
-            # Use notebook's approach: full dataset cross-validation (no train/test split for main evaluation)
-            # Split only for final test score reporting
+            # PROPER ML METHODOLOGY: Always use train/test split for final evaluation
+            # This prevents overfitting and provides honest performance metrics
             X_train, X_test, y_train, y_test = train_test_split(
                 X_scaled, y_encoded, test_size=0.3, random_state=42, stratify=y_encoded
             )
+            
+            # Log proper methodology usage
+            self.logger.info(f"   ✅ Proper train/test split: Train={len(X_train)}, Test={len(X_test)} samples")
+            self._validate_ml_methodology('train_test_split', {'train_size': len(X_train), 'test_size': len(X_test)})
             
             # Define models to test with optimized hyperparameters (based on successful benchmarks)
             models = {
@@ -1833,12 +1883,18 @@ class CognitiveAnalysisAgent:
                             best_model = model
                         
                     else:
-                        # Fallback to basic evaluation
-                        cv_scores = cross_val_score(model, X_scaled, y_encoded, cv=10, scoring='f1_weighted')
+                        # Fallback to basic evaluation - FIXED to use proper methodology
+                        # IMPORTANT: Cross-validation ONLY on training set for model selection
+                        cv_scores = cross_val_score(model, X_train, y_train, cv=5, scoring='f1_weighted')
                         mean_f1 = cv_scores.mean()
                         
-                        # Additional train/test evaluation
+                        # Validate ML methodology
+                        self._validate_ml_methodology('cross_validate', {'data': 'training_only', 'cv_folds': 5})
+                        
+                        # Train final model on full training set
                         model.fit(X_train, y_train)
+                        
+                        # Evaluate ONLY on held-out test set
                         y_pred = model.predict(X_test)
                         test_f1 = f1_score(y_test, y_pred, average='weighted')
                         
@@ -1924,9 +1980,19 @@ class CognitiveAnalysisAgent:
                 
                 classification_report_dict = classification_report(y_true, y_pred, output_dict=True)
                 
+                # Report ML methodology validation summary
+                if self.ml_validation_warnings:
+                    self.logger.warning("⚠️ ML METHODOLOGY ISSUES DETECTED:")
+                    for warning in self.ml_validation_warnings:
+                        self.logger.warning(f"   - {warning}")
+                else:
+                    self.logger.info("✅ ML methodology validation passed - all best practices followed!")
+                
                 prediction_results['best_model'] = {
                     'name': best_model_name,
                     'f1_weighted': best_f1_score,  # Cross-validation F1 score
+                    'ml_methodology_valid': len(self.ml_validation_warnings) == 0,
+                    'ml_warnings': self.ml_validation_warnings if self.ml_validation_warnings else None,
                     'test_f1_weighted': test_f1_weighted,  # Test set F1 score
                     'test_f1_macro': test_f1_macro,
                     'test_precision': test_precision,

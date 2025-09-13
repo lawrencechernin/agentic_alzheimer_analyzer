@@ -215,6 +215,108 @@ A 0.73 AUC model can be either:
 - Useless (0.2% sensitivity with default threshold)
 - Highly valuable (80% sensitivity with optimized threshold)
 
+## 7. Model Selection for Tabular Medical Data
+
+### When to Use Neural Networks vs Traditional ML
+
+#### Use Traditional ML (LR, RF, GB) When:
+- Dataset size < 100K samples
+- Number of features < 100
+- Tabular/structured data
+- Class imbalance with limited positive samples
+- Need interpretability
+
+#### Neural Networks Generally Underperform When:
+- Small medical datasets (typical research cohorts)
+- Low-dimensional tabular data
+- Noisy labels (self-report, subjective assessments)
+- Limited positive cases (< 10K)
+
+### Real-World Example
+- **Traditional ML**: 0.744 AUC with 36K samples, 23 features
+- **Best Neural Network**: 0.734 AUC (wide MLP)
+- **Complex NN (ResNet, Attention)**: 0.64-0.69 AUC (worse!)
+
+### Key Insight
+**For medical tabular data, simpler is often better.** Neural networks need millions of samples and high-dimensional inputs (images, sequences) to outperform traditional methods.
+
+## 8. Recognizing Performance Ceilings
+
+### Signs You've Hit the True Performance Limit
+
+1. **Convergence Across Methods**
+   - When resampling, feature engineering, advanced models, and neural networks all yield similar performance (±0.01 AUC)
+   - This indicates data quality limits, not methodology issues
+
+2. **Simple Models Match Complex Ones**
+   - If logistic regression ≈ deep neural networks, the relationship is likely linear/simple
+   - Adding complexity won't reveal hidden patterns
+
+3. **Diminishing Returns from Features**
+   - Going from 20 → 50 features doesn't improve performance
+   - Feature selection often helps more than feature addition
+
+### When to Stop Optimizing Models
+
+Stop when you observe:
+- Multiple independent approaches converge to similar performance
+- Best simple model is within 0.02 AUC of best complex model
+- Cross-validation variance > improvement from new methods
+- Label noise is documented/suspected
+
+### Example Performance Ceiling Pattern
+```
+Baseline Logistic:     0.744
+SMOTE + RF:           0.735
+Feature Engineering:   0.737
+XGBoost Tuned:        0.740
+Neural Network:       0.734
+Advanced Ensemble:    0.740
+→ True ceiling: ~0.74 ± 0.01
+```
+
+## 9. Data Quality vs Model Complexity
+
+### The Hierarchy of Improvements
+
+1. **Data Quality** (biggest impact)
+   - Better labels (clinical vs self-report): +0.10-0.20 AUC
+   - More samples: +0.05-0.10 AUC per order of magnitude
+   - Less selection bias: +0.05-0.15 AUC
+
+2. **Feature Quality** (moderate impact)
+   - Domain-relevant features: +0.05-0.10 AUC
+   - Proper preprocessing: +0.02-0.05 AUC
+   - Interaction terms: +0.01-0.03 AUC
+
+3. **Model Complexity** (minimal impact with good data)
+   - Ensemble vs single model: +0.01-0.03 AUC
+   - Hyperparameter tuning: +0.01-0.02 AUC
+   - Neural networks vs traditional: Often negative!
+
+### Red Flags for Data Quality Issues
+
+- Self-reported labels
+- High education/socioeconomic selection bias
+- < 10% prevalence of positive class
+- Subjective assessment criteria
+- Missing data patterns correlate with outcome
+
+### When Data Quality is Limiting
+
+Focus efforts on:
+1. Obtaining better ground truth
+2. Increasing sample size
+3. Reducing selection bias
+4. External validation
+5. Clinical deployment with threshold optimization
+
+**DON'T** waste time on:
+- Exotic models
+- Extensive hyperparameter search
+- Complex feature engineering
+- Deep learning on small tabular data
+
 ## 🎯 Key Principles
 
 1. **Lower honest metrics > Higher invalid metrics**
@@ -227,6 +329,18 @@ A 0.73 AUC model can be either:
 3. **Clinical utility > Statistical significance**
    - Focus on actionable metrics (sensitivity at specificity)
    - Consider deployment context and costs
+
+4. **Simple baselines reveal data limits**
+   - Always start with logistic regression
+   - If complex models can't beat it by >0.05 AUC, examine data quality
+
+5. **Performance convergence = true ceiling**
+   - When all methods yield similar results, you've found the limit
+   - Further optimization is wasteful
+
+6. **Data quality > Model complexity**
+   - Better labels worth 10x more than better models
+   - Focus on data before algorithms
 
 ## References
 - Incident: `bhr_memtrax_stable_0798.py` (invalid 0.798 AUC)

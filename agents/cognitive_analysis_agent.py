@@ -99,6 +99,8 @@ class CognitiveAnalysisAgent:
     - Prevents data leakage in feature selection and preprocessing
     - Automatically optimizes decision thresholds for imbalanced datasets
     - Warns when default 0.5 threshold severely underperforms
+    - Recognizes performance ceilings and advises when to stop model optimization
+    - Recommends appropriate model types based on data characteristics
     """
     
     def __init__(self, config_path: str = "config/config.yaml",
@@ -223,6 +225,106 @@ class CognitiveAnalysisAgent:
                 self.logger.warning(f"   Details: {details}")
                 
         return valid
+    
+    def _check_performance_ceiling(self, model_results: Dict[str, float], 
+                                  n_samples: int, n_features: int) -> Dict[str, Any]:
+        """
+        Check if performance has hit a ceiling and provide recommendations.
+        
+        Args:
+            model_results: Dictionary of model names to their AUC scores
+            n_samples: Number of samples in dataset
+            n_features: Number of features
+            
+        Returns:
+            Dictionary with ceiling analysis and recommendations
+        """
+        ceiling_analysis = {
+            'likely_at_ceiling': False,
+            'confidence': 0.0,
+            'recommendations': [],
+            'evidence': []
+        }
+        
+        if not model_results:
+            return ceiling_analysis
+            
+        # Calculate performance statistics
+        auc_values = list(model_results.values())
+        best_auc = max(auc_values)
+        worst_auc = min(auc_values)
+        mean_auc = np.mean(auc_values)
+        std_auc = np.std(auc_values)
+        
+        # Check for performance convergence
+        performance_range = best_auc - worst_auc
+        
+        # Criteria for ceiling detection
+        ceiling_indicators = 0
+        
+        # 1. Tight performance range across different models
+        if performance_range < 0.05:
+            ceiling_indicators += 1
+            ceiling_analysis['evidence'].append(
+                f"All models within {performance_range:.3f} AUC range"
+            )
+        
+        # 2. Simple model performs as well as complex
+        if 'LogisticRegression' in model_results and 'Ensemble' in model_results:
+            lr_auc = model_results['LogisticRegression']
+            ens_auc = model_results['Ensemble']
+            if abs(lr_auc - ens_auc) < 0.02:
+                ceiling_indicators += 1
+                ceiling_analysis['evidence'].append(
+                    f"Simple LR ({lr_auc:.3f}) ≈ Complex ensemble ({ens_auc:.3f})"
+                )
+        
+        # 3. Low standard deviation
+        if std_auc < 0.02:
+            ceiling_indicators += 1
+            ceiling_analysis['evidence'].append(
+                f"Low variance across models (σ={std_auc:.3f})"
+            )
+        
+        # 4. Check if neural networks would be appropriate
+        nn_appropriate = n_samples > 50000 and n_features > 100
+        if not nn_appropriate and n_samples < 100000:
+            ceiling_analysis['evidence'].append(
+                f"Dataset too small for neural networks ({n_samples:,} samples, {n_features} features)"
+            )
+        
+        # Determine if at ceiling
+        if ceiling_indicators >= 2:
+            ceiling_analysis['likely_at_ceiling'] = True
+            ceiling_analysis['confidence'] = min(ceiling_indicators / 3.0, 1.0)
+            
+            # Provide recommendations
+            ceiling_analysis['recommendations'].extend([
+                "✅ Performance has likely reached its ceiling",
+                f"✅ Best achievable AUC appears to be ~{best_auc:.3f}",
+                "📊 Focus on data quality rather than model complexity:",
+                "   - Obtain better ground truth labels",
+                "   - Increase sample size",
+                "   - Reduce selection bias",
+                "   - Consider external validation",
+                "🎯 Optimize decision thresholds for deployment",
+                "⚠️ Further model optimization unlikely to help"
+            ])
+            
+            self.logger.info(f"   📊 Performance ceiling detected at AUC={best_auc:.3f}")
+        else:
+            # Not at ceiling, suggest improvements
+            ceiling_analysis['recommendations'].extend([
+                "📈 Performance may still be improvable",
+                "Try: ensemble methods, hyperparameter tuning, feature engineering"
+            ])
+            
+            if nn_appropriate:
+                ceiling_analysis['recommendations'].append(
+                    "Consider: Neural networks might help with this data size"
+                )
+        
+        return ceiling_analysis
     
     def run_complete_analysis(self) -> Dict[str, Any]:
         """Execute complete cognitive assessment analysis pipeline - adaptive for different data types"""
@@ -1974,6 +2076,36 @@ class CognitiveAnalysisAgent:
                     
                 except Exception as e:
                     self.logger.warning(f"   Ensemble model failed: {e}")
+            
+            # Check for performance ceiling
+            if prediction_results['models_tested']:
+                # Collect all model performances for ceiling analysis
+                model_performances = {}
+                for model_result in prediction_results['models_tested']:
+                    model_name = model_result['model']
+                    # Use F1 score as the performance metric
+                    if 'f1_weighted' in model_result:
+                        model_performances[model_name] = model_result['f1_weighted']
+                    elif 'cv_mean' in model_result:
+                        model_performances[model_name] = model_result['cv_mean']
+                
+                # Analyze for performance ceiling
+                n_samples = len(y_train)
+                n_features = X.shape[1]
+                ceiling_analysis = self._check_performance_ceiling(
+                    model_performances, n_samples, n_features
+                )
+                
+                prediction_results['performance_ceiling_analysis'] = ceiling_analysis
+                
+                # Log ceiling analysis results
+                if ceiling_analysis['likely_at_ceiling']:
+                    self.logger.info("\n   📊 PERFORMANCE CEILING ANALYSIS:")
+                    for evidence in ceiling_analysis['evidence']:
+                        self.logger.info(f"      - {evidence}")
+                    self.logger.info("\n   📝 RECOMMENDATIONS:")
+                    for rec in ceiling_analysis['recommendations'][:5]:  # Show top 5 recommendations
+                        self.logger.info(f"      {rec}")
             
             if best_model is not None:
                 # F1-FOCUSED evaluation of best model

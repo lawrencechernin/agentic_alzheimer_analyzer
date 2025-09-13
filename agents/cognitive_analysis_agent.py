@@ -12,6 +12,10 @@ Key Features:
 - Assessment flexible: Supports any cognitive assessment combination
 - Configuration-driven: All specifics defined in config files
 - Extensible: Easy plugin architecture for custom analyses
+- Automatically optimizes decision thresholds for imbalanced datasets
+- Warns when default 0.5 threshold severely underperforms
+- Recognizes performance ceilings and advises when to stop model optimization
+- Recommends appropriate model types based on data characteristics
 """
 
 import pandas as pd
@@ -311,6 +315,16 @@ class CognitiveAnalysisAgent:
                 "⚠️ Further model optimization unlikely to help"
             ])
             
+            # Add realistic performance ceiling guidance
+            if best_auc > 0.85:
+                ceiling_analysis['recommendations'].extend([
+                    "🚨 HIGH PERFORMANCE WARNING:",
+                    "   - AUC >0.85 in cognitive impairment prediction may indicate data leakage",
+                    "   - Realistic ceiling for self-reported labels: 0.75-0.80 AUC",
+                    "   - Verify no cognitive assessment features are included",
+                    "   - Check for temporal leakage or other data issues"
+                ])
+            
             self.logger.info(f"   📊 Performance ceiling detected at AUC={best_auc:.3f}")
         else:
             # Not at ceiling, suggest improvements
@@ -325,6 +339,97 @@ class CognitiveAnalysisAgent:
                 )
         
         return ceiling_analysis
+
+    def _detect_potential_leakage(self, feature_names: List[str], target_name: str) -> Dict[str, Any]:
+        """
+        Detect potential data leakage based on feature names and target.
+        
+        Args:
+            feature_names: List of feature column names
+            target_name: Name of the target variable
+            
+        Returns:
+            Dictionary with leakage analysis and recommendations
+        """
+        leakage_indicators = []
+        warnings = []
+        recommendations = []
+        
+        # Check for cognitive assessment features when predicting cognitive impairment
+        # These features can cause leakage because they measure the same construct as the target
+        cognitive_assessment_keywords = [
+            'ecog', 'sp_ecog', 'mmse', 'moca', 'cdr', 'adni', 'cog', 'cognitive',
+            'memory', 'attention', 'executive', 'language', 'visuospatial', 'informant'
+        ]
+        
+        target_cognitive_keywords = [
+            'mci', 'dementia', 'cognitive', 'impairment', 'cdr', 'adni'
+        ]
+        
+        is_cognitive_target = any(keyword in target_name.lower() for keyword in target_cognitive_keywords)
+        
+        if is_cognitive_target:
+            cognitive_features = []
+            for feature in feature_names:
+                if any(keyword in feature.lower() for keyword in cognitive_assessment_keywords):
+                    cognitive_features.append(feature)
+            
+            if cognitive_features:
+                leakage_indicators.append(f"Found {len(cognitive_features)} cognitive assessment features: {cognitive_features[:5]}")
+                warnings.append("Using cognitive assessments as features to predict cognitive impairment may cause leakage")
+                recommendations.append("Consider removing cognitive assessment features - this can actually IMPROVE performance by reducing noise")
+                recommendations.append("Cognitive assessments measure different constructs than objective performance tests")
+        
+        # Check for medical history features when predicting medical conditions
+        medical_keywords = ['medical', 'history', 'diagnosis', 'condition', 'disease', 'qid']
+        target_medical_keywords = ['mci', 'dementia', 'alzheimer', 'cognitive', 'impairment']
+        
+        is_medical_target = any(keyword in target_name.lower() for keyword in target_medical_keywords)
+        
+        if is_medical_target:
+            medical_features = []
+            for feature in feature_names:
+                if any(keyword in feature.lower() for keyword in medical_keywords):
+                    medical_features.append(feature)
+            
+            if medical_features:
+                leakage_indicators.append(f"Found {len(medical_features)} medical history features: {medical_features[:5]}")
+                warnings.append("Using medical history as features to predict medical conditions may cause leakage")
+                recommendations.append("Consider using only objective performance measures and demographics")
+        
+        # Check for informant reports when predicting self-reported conditions
+        informant_keywords = ['informant', 'sp_', 'partner', 'family', 'caregiver']
+        self_report_keywords = ['self_', 'participant', 'subject']
+        
+        has_informant_features = any(keyword in ' '.join(feature_names).lower() for keyword in informant_keywords)
+        is_self_report_target = any(keyword in target_name.lower() for keyword in self_report_keywords)
+        
+        if has_informant_features and is_self_report_target:
+            leakage_indicators.append("Using informant reports to predict self-reported conditions")
+            warnings.append("Informant reports may leak information about the target condition")
+            recommendations.append("Consider using informant reports only for validation or as separate targets")
+        
+        # Check for temporal leakage
+        temporal_keywords = ['future', 'later', 'followup', 'm12', 'm24', 'm36']
+        has_temporal_features = any(keyword in ' '.join(feature_names).lower() for keyword in temporal_keywords)
+        
+        if has_temporal_features:
+            leakage_indicators.append("Found temporal features that may leak future information")
+            warnings.append("Features from future timepoints may cause temporal leakage")
+            recommendations.append("Ensure all features are from baseline or earlier timepoints only")
+        
+        # Overall assessment
+        has_leakage_risk = len(leakage_indicators) > 0
+        risk_level = "HIGH" if len(leakage_indicators) >= 2 else "MEDIUM" if len(leakage_indicators) == 1 else "LOW"
+        
+        return {
+            'has_leakage_risk': has_leakage_risk,
+            'risk_level': risk_level,
+            'indicators': leakage_indicators,
+            'warnings': warnings,
+            'recommendations': recommendations,
+            'n_features_checked': len(feature_names)
+        }
     
     def run_complete_analysis(self) -> Dict[str, Any]:
         """Execute complete cognitive assessment analysis pipeline - adaptive for different data types"""
@@ -1856,6 +1961,21 @@ class CognitiveAnalysisAgent:
                     
             X = df.drop(leakage_columns + [target_col], axis=1)
             y = df[target_col]
+            
+            # Enhanced leakage detection using feature names
+            feature_names = list(X.columns)
+            leakage_analysis = self._detect_potential_leakage(feature_names, target_col)
+            
+            if leakage_analysis['has_leakage_risk']:
+                self.logger.warning(f"   🚨 POTENTIAL LEAKAGE DETECTED ({leakage_analysis['risk_level']} RISK):")
+                for indicator in leakage_analysis['indicators']:
+                    self.logger.warning(f"       - {indicator}")
+                for warning in leakage_analysis['warnings']:
+                    self.logger.warning(f"       ⚠️ {warning}")
+                for rec in leakage_analysis['recommendations']:
+                    self.logger.info(f"       💡 {rec}")
+            else:
+                self.logger.info(f"   ✅ No additional leakage risks detected")
             
             self.logger.info(f"   ✅ Using {X.shape[1]} legitimate features (excluded {len(leakage_columns)} leakage-prone columns)")
             

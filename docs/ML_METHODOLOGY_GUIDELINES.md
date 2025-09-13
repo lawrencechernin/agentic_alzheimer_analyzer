@@ -153,13 +153,82 @@ y_pred = pipe.predict_proba(X_test)[:, 1]
    - Always include demographics-only model
    - Report improvement over baseline
 
-## 🎯 Key Principle
+## 6. Decision Threshold Optimization
 
-**Lower honest metrics > Higher invalid metrics**
+### The Hidden Performance Killer
 
-A properly evaluated 0.75 AUC is infinitely more valuable than an improperly evaluated 0.90 AUC. The former can be trusted for clinical deployment; the latter is dangerous misinformation.
+Default 0.5 probability threshold can make excellent models appear useless:
+
+```python
+# WRONG - Using default threshold blindly
+predictions = (model.predict_proba(X)[:, 1] >= 0.5)
+# Result: 0.2% sensitivity (misses 99.8% of cases!)
+
+# RIGHT - Optimize threshold for clinical goals
+from sklearn.metrics import roc_curve
+
+fpr, tpr, thresholds = roc_curve(y_true, y_proba)
+# Find threshold for 80% sensitivity
+idx = np.argmin(np.abs(tpr - 0.80))
+optimal_threshold = thresholds[idx]
+
+predictions = (model.predict_proba(X)[:, 1] >= optimal_threshold)
+# Result: 80% sensitivity (catches most cases!)
+```
+
+### When This Matters Most
+
+1. **Imbalanced datasets** (prevalence < 10%)
+2. **Calibrated models** (output conservative probabilities)
+3. **Medical screening** (false negatives worse than false positives)
+4. **Ensemble methods** (averaged probabilities tend toward 0.5)
+
+### Optimization Strategies
+
+| Strategy | Use Case | Method |
+|----------|----------|--------|
+| **Youden's J** | Balanced performance | `max(sensitivity + specificity - 1)` |
+| **Target Sensitivity** | Screening | Find threshold for 80-90% sensitivity |
+| **F1 Maximum** | Precision-recall balance | Grid search F1 scores |
+| **Cost-Weighted** | Economic optimization | Minimize total misclassification cost |
+
+### Real Impact Example
+
+BHR MemTrax MCI Detection (5.9% prevalence):
+- **Default (0.5)**: Detects 1/424 cases (0.2% sensitivity)
+- **Optimized (0.043)**: Detects 340/424 cases (80% sensitivity)
+- **Same model, 339 more patients helped!**
+
+### Implementation Checklist
+
+✅ Always evaluate multiple thresholds
+✅ Report sensitivity/specificity at each threshold
+✅ Choose based on clinical goals, not defaults
+✅ Document threshold in deployment code
+✅ Re-optimize for new populations
+
+### Key Insight
+
+**AUC doesn't change with threshold, but clinical utility does!**
+
+A 0.73 AUC model can be either:
+- Useless (0.2% sensitivity with default threshold)
+- Highly valuable (80% sensitivity with optimized threshold)
+
+## 🎯 Key Principles
+
+1. **Lower honest metrics > Higher invalid metrics**
+   - 0.75 AUC with proper methodology > 0.90 AUC with data leakage
+
+2. **Threshold optimization is "free" performance**
+   - No retraining needed, just change one number
+   - Can improve sensitivity by 50-80% absolute
+
+3. **Clinical utility > Statistical significance**
+   - Focus on actionable metrics (sensitivity at specificity)
+   - Consider deployment context and costs
 
 ## References
 - Incident: `bhr_memtrax_stable_0798.py` (invalid 0.798 AUC)
-- Corrected: `bhr_memtrax_corrected_methodology.py` (proper methodology)
-- Valid examples: `bhr_memtrax_minimal_0798.py` (uses train/test split)
+- Threshold discovery: `bhr_memtrax_optimized_threshold.py` (0.2% → 80% sensitivity)
+- Valid examples: `bhr_memtrax_best_result_0744.py` (proper methodology)

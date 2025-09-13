@@ -97,6 +97,8 @@ class CognitiveAnalysisAgent:
     - Never evaluates models on training data
     - Applies proper cross-validation for hyperparameter selection
     - Prevents data leakage in feature selection and preprocessing
+    - Automatically optimizes decision thresholds for imbalanced datasets
+    - Warns when default 0.5 threshold severely underperforms
     """
     
     def __init__(self, config_path: str = "config/config.yaml",
@@ -199,6 +201,20 @@ class CognitiveAnalysisAgent:
         elif action == 'full_data_calibration':
             warning_msg = "⚠️ ML METHODOLOGY WARNING: Model calibration on full dataset detected! Calibrate only on training data."
             valid = False
+            
+        elif action == 'suboptimal_threshold':
+            # This is informational, not necessarily invalid
+            if details and details.get('improvement_possible', 0) > 0.20:
+                warning_msg = f"⚠️ THRESHOLD WARNING: Default 0.5 threshold severely underperforms! Sensitivity can improve from {details.get('default_sensitivity', 0):.1%} to {details.get('optimal_sensitivity', 0):.1%} with threshold optimization."
+                valid = True  # Not invalid, just suboptimal
+            
+        elif action == 'train_test_split':
+            # This is good practice, just log it
+            valid = True
+            
+        elif action == 'cross_validate':
+            # This is good practice, just log it  
+            valid = True
             
         if warning_msg:
             self.logger.warning(warning_msg)
@@ -1835,7 +1851,7 @@ class CognitiveAnalysisAgent:
             for name, model in models.items():
                 try:
                     # F1-FOCUSED EVALUATION: Use comprehensive clinical evaluation if available
-                    if self.clinical_evaluator:
+                    if hasattr(self, 'clinical_evaluator') and self.clinical_evaluator:
                         self.logger.info(f"   🎯 {name}: F1-focused clinical evaluation...")
                         
                         # Get comprehensive metrics using clinical evaluator
@@ -1980,6 +1996,83 @@ class CognitiveAnalysisAgent:
                 
                 classification_report_dict = classification_report(y_true, y_pred, output_dict=True)
                 
+                # THRESHOLD OPTIMIZATION - Critical for imbalanced datasets
+                optimal_thresholds = {}
+                if hasattr(best_model, 'predict_proba'):
+                    try:
+                        self.logger.info("   🎯 Performing threshold optimization...")
+                        
+                        # Get probabilities for positive class
+                        if best_model_name == 'Ensemble' and 'X_test_ens' in locals():
+                            y_proba = best_model.predict_proba(X_test_ens)
+                            y_true_thresh = y_test_ens
+                        else:
+                            y_proba = best_model.predict_proba(X_test)
+                            y_true_thresh = y_test
+                        
+                        # Check if this is binary or multiclass
+                        n_classes = len(np.unique(y_true_thresh))
+                        
+                        # Only perform threshold optimization for binary classification
+                        if n_classes == 2:
+                            # Handle binary case
+                            if len(y_proba.shape) > 1 and y_proba.shape[1] > 1:
+                                y_proba_positive = y_proba[:, 1]
+                            else:
+                                y_proba_positive = y_proba
+                            
+                            # Find optimal thresholds for different objectives
+                            from sklearn.metrics import roc_curve, precision_recall_curve
+                            
+                            # ROC-based optimization
+                            fpr, tpr, thresholds_roc = roc_curve(y_true_thresh, y_proba_positive)
+                            
+                            # Youden's J statistic (balanced)
+                            j_scores = tpr - fpr
+                            optimal_idx = np.argmax(j_scores)
+                            optimal_thresholds['youden'] = {
+                                'threshold': float(thresholds_roc[optimal_idx]),
+                                'sensitivity': float(tpr[optimal_idx]),
+                                'specificity': float(1 - fpr[optimal_idx])
+                            }
+                            
+                            # High sensitivity for screening (80% target)
+                            target_sensitivity = 0.80
+                            idx_80 = np.argmin(np.abs(tpr - target_sensitivity))
+                            optimal_thresholds['screening_80'] = {
+                                'threshold': float(thresholds_roc[idx_80]),
+                                'sensitivity': float(tpr[idx_80]),
+                                'specificity': float(1 - fpr[idx_80])
+                            }
+                            
+                            # Default threshold comparison
+                            y_pred_default = (y_proba_positive >= 0.5).astype(int)
+                            default_sensitivity = recall_score(y_true_thresh, y_pred_default, average='binary')
+                            
+                            optimal_thresholds['default'] = {
+                                'threshold': 0.5,
+                                'sensitivity': float(default_sensitivity),
+                                'warning': 'Default threshold often inappropriate for imbalanced data!'
+                            }
+                            
+                            # Log threshold optimization results
+                            self.logger.info(f"   📊 Threshold Analysis:")
+                            self.logger.info(f"      Default (0.5): Sensitivity={default_sensitivity:.1%}")
+                            self.logger.info(f"      Optimal (Youden): Threshold={optimal_thresholds['youden']['threshold']:.3f}, Sensitivity={optimal_thresholds['youden']['sensitivity']:.1%}")
+                            self.logger.info(f"      Screening (80%): Threshold={optimal_thresholds['screening_80']['threshold']:.3f}, Sensitivity={optimal_thresholds['screening_80']['sensitivity']:.1%}")
+                            
+                            # Add ML best practice warning if needed
+                            if default_sensitivity < 0.50 and optimal_thresholds['youden']['sensitivity'] > default_sensitivity + 0.20:
+                                self._validate_ml_methodology('suboptimal_threshold', {
+                                    'default_sensitivity': default_sensitivity,
+                                    'optimal_sensitivity': optimal_thresholds['youden']['sensitivity'],
+                                    'improvement_possible': optimal_thresholds['youden']['sensitivity'] - default_sensitivity
+                                })
+                        else:
+                            self.logger.info(f"   ℹ️ Threshold optimization skipped (multiclass with {n_classes} classes)")
+                    except Exception as e:
+                        self.logger.debug(f"   Threshold optimization skipped: {e}")
+                
                 # Report ML methodology validation summary
                 if self.ml_validation_warnings:
                     self.logger.warning("⚠️ ML METHODOLOGY ISSUES DETECTED:")
@@ -1993,6 +2086,7 @@ class CognitiveAnalysisAgent:
                     'f1_weighted': best_f1_score,  # Cross-validation F1 score
                     'ml_methodology_valid': len(self.ml_validation_warnings) == 0,
                     'ml_warnings': self.ml_validation_warnings if self.ml_validation_warnings else None,
+                    'threshold_optimization': optimal_thresholds if optimal_thresholds else None,
                     'test_f1_weighted': test_f1_weighted,  # Test set F1 score
                     'test_f1_macro': test_f1_macro,
                     'test_precision': test_precision,

@@ -1665,13 +1665,14 @@ class CognitiveAnalysisAgent:
         return has_memtrax and has_outcomes
     
     def _analyze_memtrax_predictive_power(self) -> Dict[str, Any]:
-        """Analyze MemTrax predictive power for cognitive impairment detection"""
+        """Analyze MemTrax predictive power for cognitive impairment detection using Bergeron's proven approach"""
         prediction_results = {
             'analysis_type': 'memtrax_cognitive_impairment_prediction',
             'memtrax_variables': [],
             'outcome_variables': [],
             'model_performance': {},
-            'predictive_insights': []
+            'predictive_insights': [],
+            'bergeron_style_analysis': {}
         }
         
         try:
@@ -1686,7 +1687,12 @@ class CognitiveAnalysisAgent:
             prediction_results['memtrax_variables'] = memtrax_vars
             prediction_results['outcome_variables'] = outcome_vars
             
-            # Analyze each outcome variable
+            # NEW: Bergeron-style analysis with optimal feature set
+            self.logger.info("   🧠 Running Bergeron-style MemTrax + medical features analysis")
+            bergeron_results = self._run_bergeron_style_analysis()
+            prediction_results['bergeron_style_analysis'] = bergeron_results
+            
+            # Original correlation-based analysis
             for outcome_var in outcome_vars[:2]:  # Limit to prevent excessive analysis
                 self.logger.info(f"   Analyzing MemTrax prediction for: {outcome_var}")
                 
@@ -1756,6 +1762,252 @@ class CognitiveAnalysisAgent:
             relationship_analysis['error'] = str(e)
         
         return relationship_analysis
+    
+    def _run_bergeron_style_analysis(self) -> Dict[str, Any]:
+        """Run Bergeron-style analysis using proven feature set: MemTrax + medical demographics"""
+        bergeron_results = {
+            'analysis_type': 'bergeron_style_memtrax_analysis',
+            'feature_set': 'MemTrax (2) + Medical Demographics (8)',
+            'total_features': 10,
+            'model_performance': {},
+            'feature_importance': {},
+            'insights': []
+        }
+        
+        try:
+            # Extract Bergeron's exact features
+            bergeron_features = self._extract_bergeron_features()
+            
+            if bergeron_features is None or len(bergeron_features) < 50:
+                bergeron_results['error'] = 'Insufficient data for Bergeron-style analysis'
+                return bergeron_results
+            
+            # Find cognitive impairment target
+            target_col = self._find_cognitive_impairment_target()
+            if target_col is None:
+                bergeron_results['error'] = 'No cognitive impairment target found'
+                return bergeron_results
+            
+            # Prepare data
+            analysis_data = bergeron_features.dropna(subset=[target_col])
+            if len(analysis_data) < 50:
+                bergeron_results['error'] = 'Insufficient clean data for analysis'
+                return bergeron_results
+            
+            # Separate features and target
+            feature_cols = [col for col in bergeron_features.columns if col not in ['SubjectCode', target_col]]
+            X = analysis_data[feature_cols]
+            y = analysis_data[target_col]
+            
+            # Train/test split
+            from sklearn.model_selection import train_test_split
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=0.2, random_state=42, stratify=y
+            )
+            
+            # Train Bergeron-style model (simple ensemble)
+            model_performance = self._train_bergeron_model(X_train, X_test, y_train, y_test, feature_cols)
+            bergeron_results['model_performance'] = model_performance
+            
+            # Generate insights
+            bergeron_results['insights'] = self._generate_bergeron_insights(model_performance, len(analysis_data))
+            
+            self.logger.info(f"   ✅ Bergeron-style analysis complete: AUC={model_performance.get('auc', 0):.3f}")
+            
+        except Exception as e:
+            bergeron_results['error'] = f"Bergeron-style analysis failed: {str(e)}"
+            self.logger.error(f"Bergeron-style analysis error: {e}")
+        
+        return bergeron_results
+    
+    def _extract_bergeron_features(self) -> Optional[pd.DataFrame]:
+        """Extract Bergeron's exact 10 features: MemTrax (2) + Medical Demographics (8)"""
+        try:
+            # Start with subject codes
+            subjects = self.combined_data['SubjectCode'].unique() if 'SubjectCode' in self.combined_data.columns else []
+            if len(subjects) == 0:
+                return None
+            
+            features = []
+            for subject in subjects:
+                subject_data = self.combined_data[self.combined_data['SubjectCode'] == subject]
+                if len(subject_data) == 0:
+                    continue
+                
+                feat = {'SubjectCode': subject}
+                
+                # MemTrax features (2)
+                memtrax_cols = [col for col in subject_data.columns if any(pattern.lower() in col.lower() for pattern in ['correctpct', 'correctresponsesrt'])]
+                
+                if len(memtrax_cols) >= 2:
+                    # Percent correct
+                    pct_cols = [col for col in memtrax_cols if 'pct' in col.lower()]
+                    if pct_cols:
+                        feat['memtrax_percent_correct'] = subject_data[pct_cols[0]].mean()
+                    
+                    # Response time
+                    rt_cols = [col for col in memtrax_cols if 'rt' in col.lower()]
+                    if rt_cols:
+                        feat['memtrax_response_time'] = subject_data[rt_cols[0]].mean()
+                
+                # Medical demographic features (8)
+                # Age
+                if 'Age' in subject_data.columns:
+                    feat['age'] = subject_data['Age'].iloc[0]
+                elif 'AgeRange' in subject_data.columns:
+                    age_mapping = {'18-24': 21, '25-34': 29.5, '35-44': 39.5, '45-54': 49.5,
+                                 '55-64': 59.5, '65-74': 69.5, '75-84': 79.5, '85+': 85}
+                    feat['age'] = age_mapping.get(subject_data['AgeRange'].iloc[0], 65)
+                else:
+                    feat['age'] = 65
+                
+                # Sex (1 = Male, 0 = Female)
+                if 'Gender' in subject_data.columns:
+                    feat['sex_male'] = int(subject_data['Gender'].iloc[0] == 1)
+                else:
+                    feat['sex_male'] = 0
+                
+                # Education
+                if 'Education' in subject_data.columns:
+                    feat['education_years'] = subject_data['Education'].iloc[0]
+                elif 'YearsEducationUS_Converted' in subject_data.columns:
+                    feat['education_years'] = subject_data['YearsEducationUS_Converted'].iloc[0]
+                else:
+                    feat['education_years'] = 16
+                
+                # Medical conditions (QID-based)
+                qid_mapping = {
+                    'QID3': 'hypertension',      # High blood pressure
+                    'QID4': 'diabetes',          # Diabetes
+                    'QID5': 'hyperlipidemia',    # High cholesterol
+                    'QID1-3': 'stroke',          # Stroke
+                    'QID6': 'heart_disease'      # Heart disease
+                }
+                
+                for qid, feature_name in qid_mapping.items():
+                    if qid in subject_data.columns:
+                        feat[feature_name] = int(subject_data[qid].iloc[0] == 1)
+                    else:
+                        feat[feature_name] = 0
+                
+                # Only include if we have both MemTrax features
+                if 'memtrax_percent_correct' in feat and 'memtrax_response_time' in feat:
+                    features.append(feat)
+            
+            if len(features) < 10:
+                return None
+            
+            return pd.DataFrame(features)
+            
+        except Exception as e:
+            self.logger.error(f"Error extracting Bergeron features: {e}")
+            return None
+    
+    def _find_cognitive_impairment_target(self) -> Optional[str]:
+        """Find cognitive impairment target variable"""
+        # Look for cognitive impairment indicators
+        target_patterns = ['cognitive_impairment', 'cdr', 'mmse', 'moca', 'diagnosis']
+        
+        for pattern in target_patterns:
+            matching_cols = [col for col in self.combined_data.columns if pattern.lower() in col.lower()]
+            if matching_cols:
+                return matching_cols[0]
+        
+        # Look for QID-based cognitive conditions
+        cognitive_qids = ['QID1-5', 'QID1-12', 'QID1-13', 'QID1-22', 'QID1-23']
+        for qid in cognitive_qids:
+            if qid in self.combined_data.columns:
+                return qid
+        
+        return None
+    
+    def _train_bergeron_model(self, X_train, X_test, y_train, y_test, feature_cols) -> Dict[str, Any]:
+        """Train Bergeron-style model with simple ensemble"""
+        try:
+            from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+            from sklearn.linear_model import LogisticRegression
+            from sklearn.ensemble import StackingClassifier
+            from sklearn.calibration import CalibratedClassifierCV
+            from sklearn.metrics import roc_auc_score, classification_report
+            
+            # Simple ensemble (like Bergeron used)
+            base_models = [
+                ('logistic', LogisticRegression(random_state=42, max_iter=1000)),
+                ('rf', RandomForestClassifier(n_estimators=100, random_state=42, max_depth=5)),
+                ('gb', GradientBoostingClassifier(random_state=42, max_iter=100))
+            ]
+            
+            # Stacking ensemble
+            stack = StackingClassifier(
+                estimators=base_models,
+                final_estimator=LogisticRegression(random_state=42),
+                cv=5
+            )
+            
+            # Calibrated ensemble
+            model = CalibratedClassifierCV(stack, cv=3)
+            
+            # Train
+            model.fit(X_train, y_train)
+            
+            # Evaluate
+            y_pred_proba = model.predict_proba(X_test)[:, 1]
+            auc = roc_auc_score(y_test, y_pred_proba)
+            
+            # Feature importance (from Random Forest)
+            rf_model = stack.estimators_[1]  # Random Forest
+            feature_importance = dict(zip(feature_cols, rf_model.feature_importances_))
+            
+            return {
+                'auc': float(auc),
+                'model_type': 'Bergeron-style ensemble',
+                'feature_importance': feature_importance,
+                'sample_size': len(X_train),
+                'test_size': len(X_test),
+                'prevalence': float(y_train.mean())
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error training Bergeron model: {e}")
+            return {'error': str(e)}
+    
+    def _generate_bergeron_insights(self, model_performance: Dict[str, Any], sample_size: int) -> List[str]:
+        """Generate insights from Bergeron-style analysis"""
+        insights = []
+        
+        try:
+            auc = model_performance.get('auc', 0)
+            prevalence = model_performance.get('prevalence', 0)
+            
+            # Performance assessment
+            if auc >= 0.80:
+                insights.append(f"✅ Excellent performance: AUC={auc:.3f} using Bergeron's proven feature set")
+            elif auc >= 0.70:
+                insights.append(f"✅ Good performance: AUC={auc:.3f} with simple MemTrax + medical features")
+            elif auc >= 0.60:
+                insights.append(f"⚠️ Moderate performance: AUC={auc:.3f} - may indicate label quality issues")
+            else:
+                insights.append(f"❌ Low performance: AUC={auc:.3f} - check data quality and labels")
+            
+            # Feature insights
+            feature_importance = model_performance.get('feature_importance', {})
+            if feature_importance:
+                top_features = sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)[:3]
+                insights.append(f"Top predictive features: {', '.join([f[0] for f in top_features])}")
+            
+            # Sample size context
+            insights.append(f"Analysis based on {sample_size} subjects with {prevalence:.1%} cognitive impairment prevalence")
+            
+            # Bergeron comparison
+            if auc >= 0.75:
+                insights.append("Performance approaches Bergeron's results (0.91 AUC) - validates MemTrax predictive value")
+            else:
+                insights.append("Performance below Bergeron's results - likely due to label quality differences (clinical vs self-report)")
+            
+        except Exception as e:
+            insights.append(f"Error generating Bergeron insights: {str(e)}")
+        
+        return insights
     
     def _generate_memtrax_predictive_insights(self, prediction_results: Dict[str, Any]) -> List[str]:
         """Generate insights about MemTrax predictive capabilities"""

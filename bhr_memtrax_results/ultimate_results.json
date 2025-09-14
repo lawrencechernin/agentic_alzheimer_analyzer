@@ -1,0 +1,39 @@
+{
+  "strategy": "Ultimate with enhanced features (no leakage)",
+  "n_subjects": 36191,
+  "n_features": 26,
+  "prevalence": 0.08424746483932469,
+  "best_model": "LogisticL2",
+  "best_auc": 0.6757234110428841,
+  "improvements": {
+    "from_baseline": -0.06827658895711586,
+    "from_informant_only": -0.1402765889571158
+  },
+  "all_results": {
+    "LogisticL1": {
+      "cv_auc": 0.6675018345831101,
+      "cv_std": 0.015239186887561075,
+      "test_auc": 0.6752965731794474
+    },
+    "LogisticL2": {
+      "cv_auc": 0.6675593309259542,
+      "cv_std": 0.015688559049375914,
+      "test_auc": 0.6757234110428841
+    },
+    "RF": {
+      "cv_auc": 0.6404637281338086,
+      "cv_std": 0.015084515516785395,
+      "test_auc": 0.6581963503631584
+    },
+    "HistGB": {
+      "cv_auc": 0.6523051038544216,
+      "cv_std": 0.016438874387231385,
+      "test_auc": 0.6704895775887865
+    },
+    "XGBoost": {
+      "cv_auc": 0.638443662186755,
+      "cv_std": 0.015147173769470007,
+      "test_auc": 0.6590413706293015
+    }
+  }
+}

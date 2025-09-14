@@ -1,0 +1,56 @@
+================================================================================
+BHR MEMTRAX-MCI PREDICTION ANALYSIS RESULTS
+================================================================================
+
+📊 DATASET OVERVIEW
+--------------------
+Analysis Date: 2025-09-09
+Total Subjects: 31,475
+MCI Cases: 1,908
+Healthy Cases: 29,567
+MCI Prevalence: 6.06%
+MemTrax Features: 304
+
+🤖 MODEL PERFORMANCE
+--------------------
+Best Model: Random Forest
+
+Logistic Regression:
+  F1 Score: 0.184
+  ROC-AUC: 0.692
+  Precision: 0.109
+  Recall: 0.579
+  Cross-Validation F1: 0.188 ± 0.004
+
+Random Forest:
+  F1 Score: 0.197
+  ROC-AUC: 0.672
+  Precision: 0.147
+  Recall: 0.298
+  Cross-Validation F1: 0.200 ± 0.030
+
+Gradient Boosting:
+  F1 Score: 0.024
+  ROC-AUC: 0.655
+  Precision: 0.185
+  Recall: 0.013
+  Cross-Validation F1: 0.033 ± 0.007
+
+🎯 INTERPRETATION
+-----------------
+MemTrax reaction times show LIMITED predictive power for predicting MCI.
+Best F1 Score: 0.197 (range: 0.0-1.0, higher is better)
+Best ROC-AUC: 0.672 (range: 0.5-1.0, higher is better)
+
+📁 OUTPUT FILES
+---------------
+• model_comparison.png - Model performance comparison
+• roc_curves.png - ROC curves for all models
+• feature_importance.png - Most predictive MemTrax features
+• confusion_matrix.png - Prediction accuracy breakdown
+• feature_importance.csv - Complete feature rankings
+• analysis_report.json - Complete technical results
+
+================================================================================
+Analysis complete! MemTrax reaction times can predict MCI with limited predictive power.
+================================================================================

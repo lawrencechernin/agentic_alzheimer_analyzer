@@ -1,0 +1,22 @@
+{
+  "methodology": "Proper train/test split with held-out evaluation",
+  "model": "Calibrated Stacking Ensemble (Logistic + RF + HistGB)",
+  "dataset": {
+    "total_samples": 36191,
+    "train_samples": 28952,
+    "test_samples": 7239,
+    "prevalence": 0.05860573070652925,
+    "features": 34
+  },
+  "performance": {
+    "test_auc": 0.7436661637065851,
+    "test_pr_auc": 0.17692597828449158,
+    "cv_auc": 0.7176473165102576,
+    "cv_std": 0.009352263029921731
+  },
+  "comparison": {
+    "invalid_methodology_auc": 0.798,
+    "valid_methodology_auc": 0.7436661637065851,
+    "inflation_from_invalid": 0.05433383629341493
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "auc": 0.7401124191551953,
+  "pr_auc": 0.18096804098776423,
+  "samples": 36643,
+  "features": 33,
+  "positives": 2166,
+  "model": "Stacked(Logistic+HistGB+XGBoost)",
+  "config": "lr=0.1, leaves=31, k=15"
+}

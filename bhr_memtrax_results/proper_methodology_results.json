@@ -1,0 +1,33 @@
+{
+  "methodology": "Proper train/test split",
+  "samples": {
+    "total": 36191,
+    "train": 28952,
+    "test": 7239
+  },
+  "results": {
+    "Logistic": {
+      "cv_auc": 0.7179701728328284,
+      "test_auc": 0.7418485859438806
+    },
+    "RandomForest": {
+      "cv_auc": 0.6977923422507586,
+      "test_auc": 0.7187319176622046
+    },
+    "HistGB": {
+      "cv_auc": 0.7060219828584686,
+      "test_auc": 0.7326740057309764
+    },
+    "XGBoost": {
+      "cv_auc": 0.6869121458243942,
+      "test_auc": 0.7048661387892966
+    },
+    "CalibratedStack": {
+      "test_auc": 0.7430837220891762
+    }
+  },
+  "best": {
+    "model": "CalibratedStack",
+    "auc": 0.7430837220891762
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "analysis_date": "2025-09-13T22:54:43.216347",
+  "total_subjects": 17515,
+  "subjects_no_cognitive": 4,
+  "subjects_any_cognitive": 17511,
+  "rt_no_cognitive_mean": 1.0578940476190475,
+  "rt_any_cognitive_mean": 0.8744025941410857,
+  "qid_results": {
+    "QID1-5": {
+      "description": "Mild Cognitive Impairment (MCI)",
+      "n_with": 93,
+      "n_without": 0,
+      "rt_with_mean": 1.0769376600102405,
+      "rt_with_std": 0.22115677970703726,
+      "rt_without_mean": NaN,
+      "rt_without_std": NaN,
+      "p_value": NaN,
+      "cohens_d": NaN,
+      "significance": "Insufficient data",
+      "effect_size": "Insufficient data"
+    },
+    "QID1-12": {
+      "description": "Alzheimer's Disease",
+      "n_with": 78,
+      "n_without": 0,
+      "rt_with_mean": 1.023757858629974,
+      "rt_with_std": 0.19978821185835166,
+      "rt_without_mean": NaN,
+      "rt_without_std": NaN,
+      "p_value": NaN,
+      "cohens_d": NaN,
+      "significance": "Insufficient data",
+      "effect_size": "Insufficient data"
+    },
+    "QID1-13": {
+      "description": "Dementia",
+      "n_with": 838,
+      "n_without": 0,
+      "rt_with_mean": 0.9853152533772909,
+      "rt_with_std": 0.18899747670132355,
+      "rt_without_mean": NaN,
+      "rt_without_std": NaN,
+      "p_value": NaN,
+      "cohens_d": NaN,
+      "significance": "Insufficient data",
+      "effect_size": "Insufficient data"
+    },
+    "QID1-22": {
+      "description": "Parkinson's Disease",
+      "n_with": 34,
+      "n_without": 0,
+      "rt_with_mean": 1.0192528662513956,
+      "rt_with_std": 0.2090685551966566,
+      "rt_without_mean": NaN,
+      "rt_without_std": NaN,
+      "p_value": NaN,
+      "cohens_d": NaN,
+      "significance": "Insufficient data",
+      "effect_size": "Insufficient data"
+    },
+    "QID1-23": {
+      "description": "Other Neurological Condition",
+      "n_with": 23,
+      "n_without": 0,
+      "rt_with_mean": 1.0678214338801293,
+      "rt_with_std": 0.22919742301866894,
+      "rt_without_mean": NaN,
+      "rt_without_std": NaN,
+      "p_value": NaN,
+      "cohens_d": NaN,
+      "significance": "Insufficient data",
+      "effect_size": "Insufficient data"
+    }
+  }
+}

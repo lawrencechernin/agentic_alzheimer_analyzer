@@ -1,0 +1,33 @@
+{
+  "experiment": "Drop Problematic Conditions from Labels",
+  "problematic_conditions": [
+    "QID1-16",
+    "QID1-17",
+    "QID1-18",
+    "QID1-20"
+  ],
+  "original_auc": 0.8532369935575639,
+  "experiment_auc": 0.8532369935575639,
+  "improvement": 0.0,
+  "relative_improvement_pct": 0.0,
+  "results": {
+    "Original": {
+      "auc": 0.8532369935575639,
+      "pr_auc": 0.35652232643093784,
+      "n_train": 28933,
+      "n_test": 7234,
+      "mci_prevalence_train": 0.05851449901496561,
+      "mci_prevalence_test": 0.05847387337572574,
+      "n_features": 49
+    },
+    "Experiment": {
+      "auc": 0.8532369935575639,
+      "pr_auc": 0.35652232643093784,
+      "n_train": 28933,
+      "n_test": 7234,
+      "mci_prevalence_train": 0.05851449901496561,
+      "mci_prevalence_test": 0.05847387337572574,
+      "n_features": 49
+    }
+  }
+}

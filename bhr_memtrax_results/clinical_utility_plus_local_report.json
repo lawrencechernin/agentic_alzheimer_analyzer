@@ -1,0 +1,5 @@
+{
+  "auc_overall": 0.7341725370941596,
+  "pr_auc_overall": 0.21271588260240976,
+  "selected_model": "enet l1r=0.1, C=1.0"
+}

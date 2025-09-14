@@ -1,0 +1,13 @@
+{
+  "strategy": "Residualized cognitive scores",
+  "best_auc": 0.7340446296321931,
+  "baseline_auc": 0.744,
+  "improvement": -0.009955370367806915,
+  "best_model": "Logistic",
+  "n_residual_features": 0,
+  "all_results": {
+    "Logistic": 0.7340446296321931,
+    "RF": 0.7114709505945541,
+    "HistGB": 0.7232898780437159
+  }
+}

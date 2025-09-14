@@ -1,0 +1,34 @@
+{
+  "strategy": "Informant SP-ECOG data",
+  "n_subjects": 6450,
+  "n_with_informant": 6450,
+  "prevalence": 0.9494573643410853,
+  "best_model": "RF",
+  "best_auc": 1.0,
+  "baseline_comparison": {
+    "baseline_auc": 0.744,
+    "improvement": 0.256
+  },
+  "all_results": {
+    "Logistic": {
+      "cv_auc": 0.9994558764322387,
+      "cv_std": 0.0004488941825196174,
+      "test_auc": 0.9997613814756672
+    },
+    "RF": {
+      "cv_auc": 0.9999960753532182,
+      "cv_std": 7.84929356361097e-06,
+      "test_auc": 1.0
+    },
+    "HistGB": {
+      "cv_auc": 1.0,
+      "cv_std": 4.965068306494546e-17,
+      "test_auc": 1.0
+    },
+    "XGBoost": {
+      "cv_auc": 1.0,
+      "cv_std": 0.0,
+      "test_auc": 1.0
+    }
+  }
+}

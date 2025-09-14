@@ -1,0 +1,37 @@
+{
+  "experiment": "Focus on MCI Only",
+  "original_qids": [
+    "QID1-5",
+    "QID1-12",
+    "QID1-13",
+    "QID1-22",
+    "QID1-23"
+  ],
+  "mci_only_qids": [
+    "QID1-13"
+  ],
+  "original_auc": 0.7558948065169228,
+  "mci_only_auc": 0.7081507775331691,
+  "improvement": -0.04774402898375363,
+  "relative_improvement_pct": -6.316226619382752,
+  "results": {
+    "Original": {
+      "auc": 0.7558948065169228,
+      "pr_auc": 0.19537629490987804,
+      "n_train": 28933,
+      "n_test": 7234,
+      "mci_prevalence_train": 0.05851449901496561,
+      "mci_prevalence_test": 0.05847387337572574,
+      "n_features": 35
+    },
+    "MCI-Only": {
+      "auc": 0.7081507775331691,
+      "pr_auc": 0.14560163493928496,
+      "n_train": 28933,
+      "n_test": 7234,
+      "mci_prevalence_train": 0.05319185704904435,
+      "mci_prevalence_test": 0.05322090129941941,
+      "n_features": 35
+    }
+  }
+}

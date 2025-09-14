@@ -1,0 +1,27 @@
+{
+  "experiment": "Enhanced Cognitive Reserve Features",
+  "basic_auc": 0.8537107786632181,
+  "enhanced_auc": 0.8534018638324252,
+  "improvement": -0.0003089148307928724,
+  "relative_improvement_pct": -0.03618495145119127,
+  "results": {
+    "Basic Demographics": {
+      "auc": 0.8537107786632181,
+      "pr_auc": 0.3547540655415164,
+      "n_train": 28933,
+      "n_test": 7234,
+      "mci_prevalence_train": 0.05851449901496561,
+      "mci_prevalence_test": 0.05847387337572574,
+      "n_features": 47
+    },
+    "Enhanced Cognitive Reserve": {
+      "auc": 0.8534018638324252,
+      "pr_auc": 0.3591733960511047,
+      "n_train": 28933,
+      "n_test": 7234,
+      "mci_prevalence_train": 0.05851449901496561,
+      "mci_prevalence_test": 0.05847387337572574,
+      "n_features": 71
+    }
+  }
+}

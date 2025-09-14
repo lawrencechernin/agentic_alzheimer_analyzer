@@ -1,0 +1,15 @@
+{
+  "strategy": "Clean enhanced baseline - NO cognitive assessments as features",
+  "expected_baseline": 0.744,
+  "clean_baseline": 0.73877337726159,
+  "with_feature_selection": 0.73877337726159,
+  "best_individual": {
+    "model": "Logistic",
+    "auc": 0.7377275432937886
+  },
+  "overall_best_auc": 0.73877337726159,
+  "optimal_k": "all",
+  "n_features_original": 43,
+  "n_features_selected": 43,
+  "note": "No ECOG/SP-ECOG features to avoid leakage"
+}

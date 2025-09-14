@@ -1,0 +1,38 @@
+{
+  "samples": 36011,
+  "positives": 2096,
+  "prevalence": 0.058204437532976036,
+  "features_used": [
+    "CognitiveScore_mean",
+    "seq_first_third_mean",
+    "seq_last_third_mean",
+    "seq_fatigue_effect",
+    "seq_mean_rt",
+    "seq_median_rt",
+    "long_reliability_change",
+    "long_n_timepoints",
+    "long_rt_slope",
+    "Age_Baseline",
+    "YearsEducationUS_Converted",
+    "Gender_Numeric",
+    "age_variability_interaction",
+    "ECOG_GlobalMean_Residual"
+  ],
+  "model_metrics": {
+    "selected_model": "Stacked(logit+hgb+xgb lr=0.1, leaves=31)",
+    "cv_auc_logistic": null,
+    "test_auc_internal_logistic": null,
+    "auc_overall": 0.7978146421284464,
+    "pr_auc_overall": 0.24938132783813388,
+    "threshold": null,
+    "best_C": null
+  },
+  "delta_over_demographics": {
+    "demo_auc": 0.6202132661019409,
+    "delta_auc": 0.1776013760265055
+  },
+  "artifacts": {
+    "decision_curve_png": "bhr_memtrax_results/decision_curve.png",
+    "subgroup_metrics_csv": "bhr_memtrax_results/subgroup_metrics.csv"
+  }
+}

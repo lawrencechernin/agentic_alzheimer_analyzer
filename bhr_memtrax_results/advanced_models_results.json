@@ -1,0 +1,58 @@
+{
+  "strategy": "Advanced models and ensembles",
+  "baseline_auc": 0.744,
+  "best_model": "Advanced_Stack",
+  "best_auc": 0.7394691579340799,
+  "improvement": -0.004530842065920138,
+  "all_results": {
+    "LogisticCS": {
+      "cv_auc": 0.7093913811922686,
+      "test_auc": 0.7318965517241379,
+      "optimal_threshold": 0.3823133141938212
+    },
+    "RF_Balanced": {
+      "cv_auc": 0.691849443910767,
+      "test_auc": 0.7319138553966695,
+      "optimal_threshold": 0.2983768812013844
+    },
+    "XGBoost_Weighted": {
+      "cv_auc": 0.687128540283789,
+      "test_auc": 0.7137467296058916,
+      "optimal_threshold": 0.2840699553489685
+    },
+    "MLP_Balanced": {
+      "cv_auc": 0.6639069105659613,
+      "test_auc": 0.7118661664751728,
+      "optimal_threshold": 0.06088170797361108
+    },
+    "BalancedBagging": {
+      "cv_auc": 0.7091178270734557,
+      "test_auc": 0.7385162446877727,
+      "optimal_threshold": 0.05832229722260305
+    },
+    "EasyEnsemble": {
+      "cv_auc": 0.7038067590830911,
+      "test_auc": 0.7358847021691883,
+      "optimal_threshold": 0.3040117705021529
+    },
+    "RF_Tuned": {
+      "test_auc": 0.7291604950234638
+    },
+    "HistGB_Tuned": {
+      "test_auc": 0.7366206273619513
+    },
+    "XGB_Tuned": {
+      "test_auc": 0.7221474895831891
+    },
+    "Advanced_Stack": {
+      "test_auc": 0.7394691579340799,
+      "optimal_threshold": 0.049912037312955126
+    }
+  },
+  "notes": [
+    "Cost-sensitive learning applied",
+    "Hyperparameter tuning performed",
+    "Advanced ensemble methods tested",
+    "Threshold optimization included"
+  ]
+}

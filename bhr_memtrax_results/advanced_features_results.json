@@ -1,0 +1,33 @@
+{
+  "strategy": "Advanced feature engineering and selection",
+  "best_feature_selection": "mutual_info",
+  "best_model": "Logistic",
+  "best_auc": 0.7353963925303506,
+  "baseline_auc": 0.744,
+  "improvement": -0.008603607469649388,
+  "n_features_original": 33,
+  "n_features_selected": 10,
+  "feature_selection_results": {
+    "baseline": 0.7342868810476335,
+    "mutual_info": 0.737131950885256,
+    "chi2": 0.0,
+    "anova": 0.7370689655172413,
+    "l1": 0.7322516230844834,
+    "tree": 0.7312400503882944,
+    "top4": 0.0
+  },
+  "model_results": {
+    "Logistic": {
+      "cv_auc": 0.7061235964230472,
+      "test_auc": 0.7353963925303506
+    },
+    "RF": {
+      "cv_auc": 0.6899951563171622,
+      "test_auc": 0.7145402760281842
+    },
+    "XGBoost": {
+      "cv_auc": 0.691108130603592,
+      "test_auc": 0.7199329655726132
+    }
+  }
+}

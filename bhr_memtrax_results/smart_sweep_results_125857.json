@@ -1,0 +1,699 @@
+{
+  "timestamp": "2025-09-11T12:58:57.823992",
+  "configs_tested": 20,
+  "best_auc": 0.7418994443342996,
+  "best_pr_auc": 0.1848978518425688,
+  "best_config": {
+    "seed": 42,
+    "acc_thresh": 0.65,
+    "winsor": false,
+    "hgb_lr": 0.1,
+    "hgb_leaves": 31,
+    "k_features": 75,
+    "use_xgb": true
+  },
+  "top_20_results": [
+    {
+      "config_num": 17,
+      "auc": 0.7418994443342996,
+      "pr_auc": 0.1848978518425688,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": false,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 31,
+        "k_features": 75,
+        "use_xgb": true
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:53:32.885092"
+    },
+    {
+      "config_num": 1,
+      "auc": 0.7411780702271425,
+      "pr_auc": 0.18602806400076288,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 31,
+        "k_features": 75,
+        "use_xgb": true
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:21:54.781723"
+    },
+    {
+      "config_num": 5,
+      "auc": 0.7411745537795449,
+      "pr_auc": 0.1843565735423195,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 35,
+        "k_features": 75,
+        "use_xgb": true
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:29:47.689352"
+    },
+    {
+      "config_num": 9,
+      "auc": 0.7408140341758518,
+      "pr_auc": 0.18316512634211024,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.12,
+        "hgb_leaves": 31,
+        "k_features": 75,
+        "use_xgb": true
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:37:17.624569"
+    },
+    {
+      "config_num": 11,
+      "auc": 0.740688111861882,
+      "pr_auc": 0.18559306369839754,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.12,
+        "hgb_leaves": 31,
+        "k_features": 100,
+        "use_xgb": true
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:42:01.083116"
+    },
+    {
+      "config_num": 3,
+      "auc": 0.7406162758609602,
+      "pr_auc": 0.18552747322429045,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 31,
+        "k_features": 100,
+        "use_xgb": true
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:26:02.921257"
+    },
+    {
+      "config_num": 13,
+      "auc": 0.7405395838133564,
+      "pr_auc": 0.183445667064492,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.12,
+        "hgb_leaves": 35,
+        "k_features": 75,
+        "use_xgb": true
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:46:07.181279"
+    },
+    {
+      "config_num": 15,
+      "auc": 0.7401859296549729,
+      "pr_auc": 0.18606315438965199,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.12,
+        "hgb_leaves": 35,
+        "k_features": 100,
+        "use_xgb": true
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:49:50.037372"
+    },
+    {
+      "config_num": 2,
+      "auc": 0.7399012648494558,
+      "pr_auc": 0.1767638936424975,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 31,
+        "k_features": 75,
+        "use_xgb": false
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:23:59.607618"
+    },
+    {
+      "config_num": 19,
+      "auc": 0.739841652690183,
+      "pr_auc": 0.1856719319918361,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": false,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 31,
+        "k_features": 100,
+        "use_xgb": true
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:57:13.872698"
+    },
+    {
+      "config_num": 4,
+      "auc": 0.7398413177904118,
+      "pr_auc": 0.1790415623633458,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 31,
+        "k_features": 100,
+        "use_xgb": false
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:27:45.081494"
+    },
+    {
+      "config_num": 12,
+      "auc": 0.739840815440755,
+      "pr_auc": 0.1799386893916154,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.12,
+        "hgb_leaves": 31,
+        "k_features": 100,
+        "use_xgb": false
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:44:07.109724"
+    },
+    {
+      "config_num": 14,
+      "auc": 0.7395747375725392,
+      "pr_auc": 0.17914441133806555,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.12,
+        "hgb_leaves": 35,
+        "k_features": 75,
+        "use_xgb": false
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:47:48.956285"
+    },
+    {
+      "config_num": 7,
+      "auc": 0.7395184744109782,
+      "pr_auc": 0.1830865131145454,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 35,
+        "k_features": 100,
+        "use_xgb": true
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:33:35.243488"
+    },
+    {
+      "config_num": 8,
+      "auc": 0.7391840769894386,
+      "pr_auc": 0.17713605736593618,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 35,
+        "k_features": 100,
+        "use_xgb": false
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:35:17.194956"
+    },
+    {
+      "config_num": 6,
+      "auc": 0.7390012217143652,
+      "pr_auc": 0.17788391358562525,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 35,
+        "k_features": 75,
+        "use_xgb": false
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:31:28.597613"
+    },
+    {
+      "config_num": 10,
+      "auc": 0.7389476377509738,
+      "pr_auc": 0.18023503737583185,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.12,
+        "hgb_leaves": 31,
+        "k_features": 75,
+        "use_xgb": false
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:38:56.502833"
+    },
+    {
+      "config_num": 18,
+      "auc": 0.7383021184419927,
+      "pr_auc": 0.17595666228609555,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": false,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 31,
+        "k_features": 75,
+        "use_xgb": false
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:55:14.338522"
+    },
+    {
+      "config_num": 16,
+      "auc": 0.7382842013042337,
+      "pr_auc": 0.17969116799127868,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.12,
+        "hgb_leaves": 35,
+        "k_features": 100,
+        "use_xgb": false
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:51:31.280729"
+    },
+    {
+      "config_num": 20,
+      "auc": 0.7373039496739415,
+      "pr_auc": 0.1769926934441676,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": false,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 31,
+        "k_features": 100,
+        "use_xgb": false
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:58:57.821734"
+    }
+  ],
+  "all_results": [
+    {
+      "config_num": 1,
+      "auc": 0.7411780702271425,
+      "pr_auc": 0.18602806400076288,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 31,
+        "k_features": 75,
+        "use_xgb": true
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:21:54.781723"
+    },
+    {
+      "config_num": 2,
+      "auc": 0.7399012648494558,
+      "pr_auc": 0.1767638936424975,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 31,
+        "k_features": 75,
+        "use_xgb": false
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:23:59.607618"
+    },
+    {
+      "config_num": 3,
+      "auc": 0.7406162758609602,
+      "pr_auc": 0.18552747322429045,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 31,
+        "k_features": 100,
+        "use_xgb": true
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:26:02.921257"
+    },
+    {
+      "config_num": 4,
+      "auc": 0.7398413177904118,
+      "pr_auc": 0.1790415623633458,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 31,
+        "k_features": 100,
+        "use_xgb": false
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:27:45.081494"
+    },
+    {
+      "config_num": 5,
+      "auc": 0.7411745537795449,
+      "pr_auc": 0.1843565735423195,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 35,
+        "k_features": 75,
+        "use_xgb": true
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:29:47.689352"
+    },
+    {
+      "config_num": 6,
+      "auc": 0.7390012217143652,
+      "pr_auc": 0.17788391358562525,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 35,
+        "k_features": 75,
+        "use_xgb": false
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:31:28.597613"
+    },
+    {
+      "config_num": 7,
+      "auc": 0.7395184744109782,
+      "pr_auc": 0.1830865131145454,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 35,
+        "k_features": 100,
+        "use_xgb": true
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:33:35.243488"
+    },
+    {
+      "config_num": 8,
+      "auc": 0.7391840769894386,
+      "pr_auc": 0.17713605736593618,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 35,
+        "k_features": 100,
+        "use_xgb": false
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:35:17.194956"
+    },
+    {
+      "config_num": 9,
+      "auc": 0.7408140341758518,
+      "pr_auc": 0.18316512634211024,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.12,
+        "hgb_leaves": 31,
+        "k_features": 75,
+        "use_xgb": true
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:37:17.624569"
+    },
+    {
+      "config_num": 10,
+      "auc": 0.7389476377509738,
+      "pr_auc": 0.18023503737583185,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.12,
+        "hgb_leaves": 31,
+        "k_features": 75,
+        "use_xgb": false
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:38:56.502833"
+    },
+    {
+      "config_num": 11,
+      "auc": 0.740688111861882,
+      "pr_auc": 0.18559306369839754,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.12,
+        "hgb_leaves": 31,
+        "k_features": 100,
+        "use_xgb": true
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:42:01.083116"
+    },
+    {
+      "config_num": 12,
+      "auc": 0.739840815440755,
+      "pr_auc": 0.1799386893916154,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.12,
+        "hgb_leaves": 31,
+        "k_features": 100,
+        "use_xgb": false
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:44:07.109724"
+    },
+    {
+      "config_num": 13,
+      "auc": 0.7405395838133564,
+      "pr_auc": 0.183445667064492,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.12,
+        "hgb_leaves": 35,
+        "k_features": 75,
+        "use_xgb": true
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:46:07.181279"
+    },
+    {
+      "config_num": 14,
+      "auc": 0.7395747375725392,
+      "pr_auc": 0.17914441133806555,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.12,
+        "hgb_leaves": 35,
+        "k_features": 75,
+        "use_xgb": false
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:47:48.956285"
+    },
+    {
+      "config_num": 15,
+      "auc": 0.7401859296549729,
+      "pr_auc": 0.18606315438965199,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.12,
+        "hgb_leaves": 35,
+        "k_features": 100,
+        "use_xgb": true
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:49:50.037372"
+    },
+    {
+      "config_num": 16,
+      "auc": 0.7382842013042337,
+      "pr_auc": 0.17969116799127868,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": true,
+        "hgb_lr": 0.12,
+        "hgb_leaves": 35,
+        "k_features": 100,
+        "use_xgb": false
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:51:31.280729"
+    },
+    {
+      "config_num": 17,
+      "auc": 0.7418994443342996,
+      "pr_auc": 0.1848978518425688,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": false,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 31,
+        "k_features": 75,
+        "use_xgb": true
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:53:32.885092"
+    },
+    {
+      "config_num": 18,
+      "auc": 0.7383021184419927,
+      "pr_auc": 0.17595666228609555,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": false,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 31,
+        "k_features": 75,
+        "use_xgb": false
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:55:14.338522"
+    },
+    {
+      "config_num": 19,
+      "auc": 0.739841652690183,
+      "pr_auc": 0.1856719319918361,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": false,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 31,
+        "k_features": 100,
+        "use_xgb": true
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:57:13.872698"
+    },
+    {
+      "config_num": 20,
+      "auc": 0.7373039496739415,
+      "pr_auc": 0.1769926934441676,
+      "config": {
+        "seed": 42,
+        "acc_thresh": 0.65,
+        "winsor": false,
+        "hgb_lr": 0.1,
+        "hgb_leaves": 31,
+        "k_features": 100,
+        "use_xgb": false
+      },
+      "n_samples": 36643,
+      "n_features": 41,
+      "timestamp": "2025-09-11T12:58:57.821734"
+    }
+  ]
+}

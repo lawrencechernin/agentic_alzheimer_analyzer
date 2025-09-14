@@ -1,0 +1,17 @@
+{
+  "timestamp": "2025-09-12T00:34:18.473740",
+  "model": "Stacked(Logistic+HistGB+XGBoost)",
+  "configuration": "lr=0.12, leaves=28, k=25, seed=1337",
+  "metrics": {
+    "test_auc": 0.7289809931003918,
+    "pr_auc": 0.16314334571752856,
+    "demo_auc": 0.62,
+    "incremental": 0.10898099310039178
+  },
+  "samples": 36020,
+  "features": 41,
+  "positives": 2096,
+  "prevalence": 0.05818989450305386,
+  "training_time_seconds": 18.724162101745605,
+  "total_time_seconds": 43.012598752975464
+}

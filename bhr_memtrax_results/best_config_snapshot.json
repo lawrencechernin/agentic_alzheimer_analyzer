@@ -1,0 +1,80 @@
+{
+  "timestamp": "2025-09-10T18:15:03.445738",
+  "configuration": {
+    "model": "StackingClassifier",
+    "base_models": [
+      "LogisticRegression (MI k=15)",
+      "HistGradientBoosting (lr=0.1, leaves=31)",
+      "XGBClassifier (scale_pos_weight)"
+    ],
+    "preprocessing": {
+      "ashford_accuracy_threshold": 0.65,
+      "rt_winsorization": [
+        0.4,
+        2.0
+      ],
+      "quality_filters": [
+        "Status == 'Collected'",
+        "0.5 <= RT <= 2.5"
+      ]
+    },
+    "features": {
+      "memtrax_core": [
+        "CognitiveScore_mean",
+        "CorrectPCT_mean",
+        "CorrectResponsesRT_mean",
+        "CorrectPCT_std",
+        "CorrectResponsesRT_std",
+        "CorrectResponsesRT_cv"
+      ],
+      "sequence_features": [
+        "seq_fatigue_effect",
+        "seq_first_third_mean",
+        "seq_last_third_mean",
+        "long_reliability_change",
+        "long_n_timepoints",
+        "long_rt_slope"
+      ],
+      "demographics": [
+        "Age_Baseline",
+        "YearsEducationUS_Converted",
+        "Gender_Numeric",
+        "Age_squared",
+        "Education_squared",
+        "Age_Education_interaction",
+        "CognitiveReserve_Proxy",
+        "age_rt_interaction",
+        "age_variability_interaction"
+      ],
+      "ecog_residuals": [
+        "ECOG_mean",
+        "ECOG_Memory_mean",
+        "ECOG_Language_mean",
+        "ECOG_Visuospatial_mean",
+        "ECOG_Executive_mean",
+        "SP_ECOG_mean",
+        "SP_ADL_mean"
+      ],
+      "splines": [
+        "Age and Education natural cubic splines (3 knots)"
+      ]
+    },
+    "target": {
+      "type": "composite",
+      "description": "Any Cognitive Impairment (OR of QIDs: 3, 5, 36, 216, 250)",
+      "prevalence": "~11-12%"
+    },
+    "results": {
+      "AUC": 0.798,
+      "PR_AUC": 0.249,
+      "demographics_only_AUC": 0.62,
+      "incremental_value": 0.178
+    }
+  },
+  "notes": [
+    "This configuration achieved AUC=0.798, just 0.002 below clinical threshold",
+    "Key success factors: composite target, ECOG residuals, stacking ensemble",
+    "Winsorization and quality filtering were critical for noise reduction",
+    "Spline features captured non-linear age/education relationships"
+  ]
+}

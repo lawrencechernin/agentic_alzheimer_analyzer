@@ -55,3 +55,4 @@ The agent now automatically:
 5. **Validates methodology** to ensure honest evaluation
 
 This makes the agent much smarter about detecting and preventing data leakage in future analyses, ensuring more reliable and honest performance metrics.
+

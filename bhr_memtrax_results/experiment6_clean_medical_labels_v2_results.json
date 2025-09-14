@@ -1,0 +1,43 @@
+{
+  "experiment": "Clean Up Medical Labels (Version 2)",
+  "original_qids": [
+    "QID1-5",
+    "QID1-12",
+    "QID1-13",
+    "QID1-22",
+    "QID1-23"
+  ],
+  "cleaned_qids": [
+    "QID1-5",
+    "QID1-12",
+    "QID1-13"
+  ],
+  "removed_qids": [
+    "QID1-22",
+    "QID1-23"
+  ],
+  "original_auc": 0.7558948065169228,
+  "cleaned_auc": 0.7113729024866905,
+  "improvement": -0.04452190403023226,
+  "relative_improvement_pct": -5.889960302199207,
+  "results": {
+    "Original": {
+      "auc": 0.7558948065169228,
+      "pr_auc": 0.19537629490987804,
+      "n_train": 28933,
+      "n_test": 7234,
+      "mci_prevalence_train": 0.05851449901496561,
+      "mci_prevalence_test": 0.05847387337572574,
+      "n_features": 35
+    },
+    "Cleaned": {
+      "auc": 0.7113729024866905,
+      "pr_auc": 0.16209242796060547,
+      "n_train": 28933,
+      "n_test": 7234,
+      "mci_prevalence_train": 0.05778868420143089,
+      "mci_prevalence_test": 0.05778269283936965,
+      "n_features": 35
+    }
+  }
+}

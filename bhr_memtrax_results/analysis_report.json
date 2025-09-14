@@ -1,0 +1,47 @@
+{
+  "analysis_metadata": {
+    "timestamp": "2025-09-09T22:34:58.467734",
+    "data_directory": "../bhr/BHR-ALL-EXT_Mem_2022",
+    "total_subjects": 31475,
+    "mci_cases": 1908,
+    "healthy_cases": 29567,
+    "features_used": 304
+  },
+  "model_performance": {
+    "Logistic Regression": {
+      "cv_f1_mean": 0.18848633021247893,
+      "cv_f1_std": 0.003628372832117656,
+      "train_f1": 0.20968730839975475,
+      "test_f1": 0.18363107602825096,
+      "test_precision": 0.1091358024691358,
+      "test_recall": 0.5785340314136126,
+      "test_accuracy": 0.687847498014297,
+      "test_roc_auc": 0.6917157421353075
+    },
+    "Random Forest": {
+      "cv_f1_mean": 0.20049706758752625,
+      "cv_f1_std": 0.029973906655809204,
+      "train_f1": 0.48800325335502237,
+      "test_f1": 0.19672131147540986,
+      "test_precision": 0.14671814671814673,
+      "test_recall": 0.29842931937172773,
+      "test_accuracy": 0.8521048451151708,
+      "test_roc_auc": 0.6718531268843253
+    },
+    "Gradient Boosting": {
+      "cv_f1_mean": 0.03277699968650609,
+      "cv_f1_std": 0.007418412362153413,
+      "train_f1": 0.4778054862842893,
+      "test_f1": 0.02444987775061125,
+      "test_precision": 0.18518518518518517,
+      "test_recall": 0.013089005235602094,
+      "test_accuracy": 0.936616362192216,
+      "test_roc_auc": 0.6546880022100563
+    }
+  },
+  "data_summary": {
+    "memtrax_rows": 190861,
+    "medical_rows": 207545,
+    "merged_rows": 31475
+  }
+}

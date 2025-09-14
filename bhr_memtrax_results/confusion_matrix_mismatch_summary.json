@@ -1,0 +1,24 @@
+{
+  "total_mismatches": 52,
+  "false_positives": 0,
+  "false_negatives": 52,
+  "total_test_cases": 7388,
+  "mismatch_rate": 0.007038440714672442,
+  "qid_descriptions": {
+    "QID1-5": "Please indicate whether you currently have or have had any of the following conditions in the past.... Dementia",
+    "QID1-12": "Please indicate whether you currently have or have had any of the following conditions in the past.... Alzheimer's Disease",
+    "QID1-13": "Please indicate whether you currently have or have had any of the following conditions in the past.... Mild Cognitive Impairment",
+    "QID1-22": "Please indicate whether you currently have or have had any of the following conditions in the past.... Frontotemporal Dementia (FTD)",
+    "QID1-23": "Please indicate whether you currently have or have had any of the following conditions in the past.... Lewy Body Disease (LBD)"
+  },
+  "ecog_descriptions": {
+    "QID49-1": "Memory: Remembering a few shopping items without a list",
+    "QID49-2": "Memory: Remembering things that happened recently (such as recent outings, events in the news)",
+    "QID49-3": "Memory: Recalling conversations a few days later",
+    "QID49-4": "Memory: Remembering where I have placed objects",
+    "QID49-5": "Memory: Repeating stories and/or questions",
+    "QID49-6": "Memory: Remembering the current date or day of the week",
+    "QID49-7": "Memory: Remembering I have already told someone something",
+    "QID49-8": "Memory: Remembering appointments, meetings, or engagements"
+  }
+}

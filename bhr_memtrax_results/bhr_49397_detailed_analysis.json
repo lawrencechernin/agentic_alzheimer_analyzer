@@ -1,0 +1,7 @@
+{
+  "subject_code": "BHR-ALL-49397",
+  "prediction_probability": 0.02016743556631727,
+  "optimal_threshold": 0.006012233206598476,
+  "model_prediction": 1,
+  "actual_label": 1,
+  "above_threshold": 

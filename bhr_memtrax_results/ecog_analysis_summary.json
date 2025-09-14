@@ -1,0 +1,10 @@
+{
+  "analysis_date": "2025-09-13T23:57:09.729409",
+  "total_ecog_items": 390,
+  "self_reported_items": 195,
+  "informant_items": 195,
+  "qids_analyzed": 39,
+  "response_levels_analyzed": 390,
+  "significant_rt_differences": 331,
+  "significant_acc_differences": 333
+}

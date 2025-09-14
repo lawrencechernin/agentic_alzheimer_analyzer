@@ -1,0 +1,14 @@
+{
+  "strategy": "Enhanced baseline with advanced feature engineering",
+  "expected_baseline": 0.744,
+  "reproduced_baseline": 0.8379905591162669,
+  "with_feature_selection": 0.8388432840986171,
+  "best_individual": {
+    "model": "HistGB",
+    "auc": 0.8409797685460763
+  },
+  "overall_best_auc": 0.8409797685460763,
+  "optimal_k": 25,
+  "n_features_original": 49,
+  "n_features_selected": 25
+}

@@ -1,0 +1,34 @@
+{
+  "strategy": "Corrected informant thresholds",
+  "n_subjects": 38202,
+  "n_with_informant": 6450,
+  "prevalence": 0.08601643892989896,
+  "best_model": "XGBoost",
+  "best_auc": 0.8162849069235879,
+  "baseline_comparison": {
+    "baseline_auc": 0.744,
+    "improvement": 0.07228490692358791
+  },
+  "all_results": {
+    "Logistic": {
+      "cv_auc": 0.8161747626111712,
+      "cv_std": 0.004941214368308571,
+      "test_auc": 0.8084729653864192
+    },
+    "RF": {
+      "cv_auc": 0.8188582762461254,
+      "cv_std": 0.001228874158650865,
+      "test_auc": 0.8153025571822352
+    },
+    "HistGB": {
+      "cv_auc": 0.818573612981081,
+      "cv_std": 0.0030979456835400383,
+      "test_auc": 0.812450528365771
+    },
+    "XGBoost": {
+      "cv_auc": 0.8183265970457863,
+      "cv_std": 0.0037760104629057196,
+      "test_auc": 0.8162849069235879
+    }
+  }
+}

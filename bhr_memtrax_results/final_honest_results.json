@@ -1,0 +1,32 @@
+{
+  "strategy": "Enhanced features with self-report labels (honest)",
+  "n_subjects": 36191,
+  "n_features": 16,
+  "prevalence": 0.05860573070652925,
+  "best_model": "Logistic",
+  "best_auc": 0.7311272304433893,
+  "baseline_auc": 0.744,
+  "improvement": -0.012872769556610653,
+  "all_results": {
+    "Logistic": {
+      "cv_auc": 0.70870540702518,
+      "cv_std": 0.009987116090832523,
+      "test_auc": 0.7311272304433893
+    },
+    "RF": {
+      "cv_auc": 0.686286542612233,
+      "cv_std": 0.01273504250942766,
+      "test_auc": 0.7125721563144563
+    },
+    "HistGB": {
+      "cv_auc": 0.6974954124918313,
+      "cv_std": 0.01163742100458623,
+      "test_auc": 0.7245724262517477
+    },
+    "XGBoost": {
+      "cv_auc": 0.6880118041212878,
+      "cv_std": 0.009460902341066299,
+      "test_auc": 0.71444995085757
+    }
+  }
+}

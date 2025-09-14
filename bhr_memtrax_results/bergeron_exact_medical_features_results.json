@@ -1,0 +1,46 @@
+{
+  "experiment": "Bergeron Exact Medical Features",
+  "auc": 0.7794466120546898,
+  "pr_auc": 0.2031302862667393,
+  "n_train": 28933,
+  "n_test": 7234,
+  "mci_prevalence_train": 0.05851449901496561,
+  "mci_prevalence_test": 0.05847387337572574,
+  "n_features": 10,
+  "features_used": [
+    "memtrax_percent_correct",
+    "memtrax_response_time",
+    "age",
+    "sex_male",
+    "education_years",
+    "hypertension",
+    "diabetes",
+    "hyperlipidemia",
+    "stroke",
+    "heart_disease"
+  ],
+  "bergeron_features": {
+    "memtrax_features": [
+      "memtrax_percent_correct",
+      "memtrax_response_time"
+    ],
+    "medical_features": [
+      "age",
+      "sex_male",
+      "education_years",
+      "hypertension",
+      "diabetes",
+      "hyperlipidemia",
+      "stroke",
+      "heart_disease"
+    ],
+    "total_features": 10
+  },
+  "bergeron_comparison": {
+    "bergeron_auc": 0.91,
+    "our_auc": 0.7794466120546898,
+    "difference": 0.13055338794531024,
+    "bergeron_target": "MOCA-defined MCI",
+    "our_target": "Medical history MCI"
+  }
+}

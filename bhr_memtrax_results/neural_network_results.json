@@ -1,0 +1,28 @@
+{
+  "strategy": "Neural Networks (PyTorch and sklearn)",
+  "baseline_auc": 0.744,
+  "best_model": "MLP_Wide",
+  "best_auc": 0.734397624551835,
+  "improvement": -0.009602375448165001,
+  "pytorch_results": {
+    "Shallow_NN": 0.7093768601447971,
+    "Deep_NN": 0.7007757236395853,
+    "Wide_NN": 0.6983592657705672,
+    "Residual_NN": 0.6417871579063941,
+    "Attention_NN": 0.6898993272332118
+  },
+  "sklearn_results": {
+    "MLP_Small": 0.7235115380888439,
+    "MLP_Medium": 0.7286375780395631,
+    "MLP_Large": 0.7326208834563047,
+    "MLP_Wide": 0.734397624551835,
+    "MLP_Deep": 0.7082085161754731
+  },
+  "notes": [
+    "Built on 0.744 baseline features",
+    "Tested various architectures",
+    "Used class weighting for imbalance",
+    "Applied dropout and batch normalization",
+    "Early stopping with validation"
+  ]
+}

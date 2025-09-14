@@ -1,0 +1,34 @@
+{
+  "methodology": "Longitudinal trajectory modeling",
+  "dataset": {
+    "total_subjects": 42301,
+    "subjects_with_longitudinal": 27473,
+    "avg_timepoints": 3.6867686343112456,
+    "max_followup_months": 48.0
+  },
+  "features": {
+    "total": 31,
+    "longitudinal": 15
+  },
+  "results": {
+    "Logistic": {
+      "cv_auc": 0.7492656734296601,
+      "test_auc": 0.7509555844354407
+    },
+    "RandomForest": {
+      "cv_auc": 0.7054536853670215,
+      "test_auc": 0.7243438810253273
+    },
+    "HistGB": {
+      "cv_auc": 0.7460691412273326,
+      "test_auc": 0.7564535762379965
+    },
+    "XGBoost": {
+      "cv_auc": 0.7180865387541442,
+      "test_auc": 0.7317377523477975
+    }
+  },
+  "best_model": {
+    "name": "Calibrated Stack",
+    "test_auc": 0.7620606516791824,
+    "achieved_target": 

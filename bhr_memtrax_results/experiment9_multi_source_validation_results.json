@@ -1,0 +1,36 @@
+{
+  "experiment": "Multi-Source Label Validation",
+  "self_report_auc": 0.7226873984919533,
+  "consensus_auc": 0.7409298716550625,
+  "improvement": 0.01824247316310923,
+  "relative_improvement_pct": 2.524255051516904,
+  "results": {
+    "Self-Report Only": {
+      "auc": 0.7226873984919533,
+      "pr_auc": 0.16872110884403352,
+      "n_train": 29552,
+      "n_test": 7388,
+      "mci_prevalence_train": 0.057288846778559825,
+      "mci_prevalence_test": 0.05725500812127775,
+      "n_features": 35
+    },
+    "SP-ECOG Only": {
+      "auc": 0.6724686520630742,
+      "pr_auc": 0.12353303532010057,
+      "n_train": 29552,
+      "n_test": 7388,
+      "mci_prevalence_train": 0.06645912290200325,
+      "mci_prevalence_test": 0.06645912290200325,
+      "n_features": 35
+    },
+    "Multi-Source Consensus": {
+      "auc": 0.7409298716550625,
+      "pr_auc": 0.04685838344798228,
+      "n_train": 29552,
+      "n_test": 7388,
+      "mci_prevalence_train": 0.006970763400108284,
+      "mci_prevalence_test": 0.007038440714672442,
+      "n_features": 35
+    }
+  }
+}

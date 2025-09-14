@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-09-09T23:07:32.233788",
+  "model": "LogReg",
+  "metrics": {
+    "cv_auc": 0.7107203014115602,
+    "test_auc": 0.6936099179817653,
+    "test_f1": 0.21691542288557214,
+    "test_precision": 0.17495987158908508,
+    "test_recall": 0.28534031413612565,
+    "test_accuracy": 0.8749801429706116,
+    "threshold": 0.125
+  },
+  "n_samples": 31475,
+  "n_features": 313
+}

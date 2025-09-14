@@ -1,0 +1,9 @@
+{
+  "auc": 0.7330556840426112,
+  "pr_auc": 0.19480582992665268,
+  "n_samples": 36020,
+  "n_test": 7204,
+  "positive_rate": 0.05818989450305386,
+  "method": "Fast calibrated stacking (Logistic + HistGB)",
+  "weight_logistic": 0.3
+}

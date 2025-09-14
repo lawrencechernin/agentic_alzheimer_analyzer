@@ -1,0 +1,181 @@
+{
+  "strategy": "Resampling techniques (SMOTE and variants)",
+  "best_strategy": "SMOTE + ENN",
+  "best_model": "Logistic",
+  "best_auc": 0.7348066833704785,
+  "baseline_auc": 0.744,
+  "improvement": -0.009193316629521497,
+  "all_results": {
+    "No Resampling (Baseline)": {
+      "Logistic": {
+        "auc": 0.7336947493736072,
+        "sensitivity": 0.6580188679245284,
+        "specificity": 0.6988994864269993
+      },
+      "RF": {
+        "auc": 0.7212239925801852,
+        "sensitivity": 0.49292452830188677,
+        "specificity": 0.817461482024945
+      },
+      "HistGB": {
+        "auc": 0.7209146029153226,
+        "sensitivity": 0.0,
+        "specificity": 1.0
+      },
+      "XGBoost": {
+        "auc": 0.7167970209997371,
+        "sensitivity": 0.0,
+        "specificity": 0.9995597945707997
+      }
+    },
+    "SMOTE (k=5)": {
+      "Logistic": {
+        "auc": 0.732646838965102,
+        "sensitivity": 0.6650943396226415,
+        "specificity": 0.6814380044020543
+      },
+      "RF": {
+        "auc": 0.7167610293608716,
+        "sensitivity": 0.5707547169811321,
+        "specificity": 0.7446808510638298
+      },
+      "HistGB": {
+        "auc": 0.6647885837290107,
+        "sensitivity": 0.3278301886792453,
+        "specificity": 0.857960381511372
+      },
+      "XGBoost": {
+        "auc": 0.6660344481512757,
+        "sensitivity": 0.330188679245283,
+        "specificity": 0.8711665443873807
+      }
+    },
+    "BorderlineSMOTE": {
+      "Logistic": {
+        "auc": 0.7293010008444192,
+        "sensitivity": 0.6297169811320755,
+        "specificity": 0.7325018341892884
+      },
+      "RF": {
+        "auc": 0.7225489347859191,
+        "sensitivity": 0.49764150943396224,
+        "specificity": 0.8005869405722671
+      },
+      "HistGB": {
+        "auc": 0.685441728152383,
+        "sensitivity": 0.3443396226415094,
+        "specificity": 0.8736610418195158
+      },
+      "XGBoost": {
+        "auc": 0.6834616689046082,
+        "sensitivity": 0.3443396226415094,
+        "specificity": 0.8696991929567132
+      }
+    },
+    "ADASYN": {
+      "Logistic": {
+        "auc": 0.731398205955232,
+        "sensitivity": 0.6839622641509434,
+        "specificity": 0.6714600146735143
+      },
+      "RF": {
+        "auc": 0.717476363183322,
+        "sensitivity": 0.5801886792452831,
+        "specificity": 0.7401320616287601
+      },
+      "HistGB": {
+        "auc": 0.6578155497722837,
+        "sensitivity": 0.3113207547169811,
+        "specificity": 0.8765957446808511
+      },
+      "XGBoost": {
+        "auc": 0.6609430155456194,
+        "sensitivity": 0.294811320754717,
+        "specificity": 0.8724871606749817
+      }
+    },
+    "RandomUnderSampler": {
+      "Logistic": {
+        "auc": 0.7303907861404504,
+        "sensitivity": 0.6485849056603774,
+        "specificity": 0.7129860601614086
+      },
+      "RF": {
+        "auc": 0.7258264234001026,
+        "sensitivity": 0.6320754716981132,
+        "specificity": 0.6903888481291269
+      },
+      "HistGB": {
+        "auc": 0.7104514182090006,
+        "sensitivity": 0.6391509433962265,
+        "specificity": 0.6674981658107116
+      },
+      "XGBoost": {
+        "auc": 0.7115927684491756,
+        "sensitivity": 0.6462264150943396,
+        "specificity": 0.6648569332355099
+      }
+    },
+    "SMOTE + ENN": {
+      "Logistic": {
+        "auc": 0.7348066833704785,
+        "sensitivity": 0.6957547169811321,
+        "specificity": 0.6582538517975055
+      },
+      "RF": {
+        "auc": 0.7216422223452705,
+        "sensitivity": 0.6273584905660378,
+        "specificity": 0.7071166544387381
+      },
+      "HistGB": {
+        "auc": 0.6849878528218829,
+        "sensitivity": 0.49528301886792453,
+        "specificity": 0.7636096845194424
+      },
+      "XGBoost": {
+        "auc": 0.6844568031118925,
+        "sensitivity": 0.4834905660377358,
+        "specificity": 0.7671313279530447
+      }
+    },
+    "SMOTE + Tomek": {
+      "Logistic": {
+        "auc": 0.7326942510278383,
+        "sensitivity": 0.6650943396226415,
+        "specificity": 0.6811445341159208
+      },
+      "RF": {
+        "auc": 0.7163857127036642,
+        "sensitivity": 0.5801886792452831,
+        "specificity": 0.7399853264856934
+      },
+      "HistGB": {
+        "auc": 0.6640339705699136,
+        "sensitivity": 0.3231132075471698,
+        "specificity": 0.8676449009537784
+      },
+      "XGBoost": {
+        "auc": 0.6623968701117126,
+        "sensitivity": 0.3113207547169811,
+        "specificity": 0.871019809244314
+      }
+    },
+    "Hybrid (SMOTE 0.3 + Undersample)": {
+      "Logistic": {
+        "auc": 0.7330981187447223,
+        "sensitivity": 0.6745283018867925,
+        "specificity": 0.6833455612619223
+      },
+      "RF": {
+        "auc": 0.7211066736804218,
+        "sensitivity": 0.5990566037735849,
+        "specificity": 0.7385179750550257
+      },
+      "XGBoost": {
+        "auc": 0.6897759520480627,
+        "sensitivity": 0.16273584905660377,
+        "specificity": 0.9637564196625091
+      }
+    }
+  }
+}

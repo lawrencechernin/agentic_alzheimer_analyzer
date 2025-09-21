@@ -22,7 +22,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from scipy.stats import pearsonr, spearmanr, mannwhitneyu, ttest_ind
+from scipy.stats import pearsonr, spearmanr, mannwhitneyu, ttest_ind, norm
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingClassifier, RandomForestClassifier
 from sklearn.model_selection import cross_val_score, train_test_split, RandomizedSearchCV, StratifiedKFold
@@ -230,6 +230,352 @@ class CognitiveAnalysisAgent:
                 
         return valid
     
+    def _validate_data_quality(self, data: pd.DataFrame) -> Dict[str, Any]:
+        """
+        Enhanced data quality validation based on learnings from analysis sessions.
+        
+        Args:
+            data: DataFrame to validate
+            
+        Returns:
+            Dictionary with validation results and recommendations
+        """
+        validation_results = {
+            'gender_coding_valid': True,
+            'age_calculation_valid': True,
+            'memtrax_filtering_applied': False,
+            'data_dictionary_consistent': True,
+            'warnings': [],
+            'recommendations': []
+        }
+        
+        # 1. Gender coding validation
+        if 'Gender' in data.columns or 'Profile.Gender' in data.columns:
+            gender_col = 'Gender' if 'Gender' in data.columns else 'Profile.Gender'
+            unique_genders = data[gender_col].unique()
+            
+            # Check for expected coding (0=Male, 1=Female per data dictionary)
+            if set(unique_genders).issubset({0, 1, '0', '1'}):
+                validation_results['gender_coding_valid'] = True
+            elif set(unique_genders).issubset({1, 2, '1', '2'}):
+                validation_results['gender_coding_valid'] = False
+                validation_results['warnings'].append(
+                    "Gender coding appears inverted (1=Male, 2=Female). Data dictionary specifies 0=Male, 1=Female."
+                )
+                validation_results['recommendations'].append(
+                    "Verify gender coding against data dictionary: BHR-ALL-EXT_Mem_2022/DataDictionary/DataDictionary.csv"
+                )
+        
+        # 2. Age calculation validation
+        age_columns = ['Age_Baseline', 'Age', 'age']
+        timepoint_columns = ['TimepointCode', 'timepoint']
+        
+        if any(col in data.columns for col in age_columns) and any(col in data.columns for col in timepoint_columns):
+            validation_results['age_calculation_valid'] = True
+        else:
+            validation_results['warnings'].append(
+                "Age calculation may be incomplete. Primary method: Age_Baseline + TimepointCode (months). Fallback: StatusDateTime - BaselineDate"
+            )
+            validation_results['recommendations'].append(
+                "Implement proper age calculation using Age_Baseline + TimepointCode for longitudinal data"
+            )
+        
+        # 3. MemTrax data filtering validation
+        memtrax_indicators = ['CorrectPCT', 'CorrectResponsesRT', 'Status']
+        if any(col in data.columns for col in memtrax_indicators):
+            if 'Status' in data.columns:
+                status_counts = data['Status'].value_counts()
+                if 'Collected' in status_counts:
+                    validation_results['memtrax_filtering_applied'] = True
+                else:
+                    validation_results['warnings'].append(
+                        "MemTrax data not filtered to 'Collected' status. Apply Ashford filter: Status == 'Collected'"
+                    )
+                    validation_results['recommendations'].append(
+                        "Apply MemTrax quality filter: Status == 'Collected', CorrectPCT >= 0.60, RT in [0.5, 2.5]"
+                    )
+        
+        # 4. Data dictionary consistency check
+        if hasattr(self, 'data_dictionary') and self.data_dictionary:
+            validation_results['data_dictionary_consistent'] = True
+        else:
+            validation_results['warnings'].append(
+                "Data dictionary not loaded. Always check BHR-ALL-EXT_Mem_2022/DataDictionary/DataDictionary.csv for field definitions"
+            )
+            validation_results['recommendations'].append(
+                "Load and validate against authoritative data dictionary for field definitions"
+            )
+        
+        return validation_results
+    
+    def _engineer_advanced_features(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Enhanced feature engineering based on learnings from analysis sessions.
+        
+        Args:
+            data: Input DataFrame
+            
+        Returns:
+            DataFrame with additional engineered features
+        """
+        enhanced_data = data.copy()
+        
+        # 1. Hit RT vs All-Click RT features
+        if 'CorrectResponsesRT' in data.columns and 'ReactionTimes' in data.columns:
+            # Use hit-only RTs for sequence features to avoid diluting signal
+            enhanced_data['hit_rt_mean'] = data['CorrectResponsesRT'].mean()
+            enhanced_data['hit_rt_std'] = data['CorrectResponsesRT'].std()
+            enhanced_data['hit_rt_cv'] = enhanced_data['hit_rt_std'] / (enhanced_data['hit_rt_mean'] + 1e-8)
+            
+            # All-click RT for comparison
+            enhanced_data['all_click_rt_mean'] = data['ReactionTimes'].mean()
+            enhanced_data['rt_difference'] = enhanced_data['all_click_rt_mean'] - enhanced_data['hit_rt_mean']
+        
+        # 2. Age normalization features
+        if 'Age_Baseline' in data.columns:
+            # Create age bins for normalization
+            age_bins = [0, 45, 55, 65, 75, 85, 100]
+            age_labels = ['<45', '45-54', '55-64', '65-74', '75-84', '85+']
+            enhanced_data['age_bin'] = pd.cut(data['Age_Baseline'], bins=age_bins, labels=age_labels, right=False)
+            
+            # Age-bin normalized z-scores for cognitive features
+            cognitive_features = ['CorrectPCT', 'CorrectResponsesRT', 'CorrectResponsesPCT']
+            for feature in cognitive_features:
+                if feature in data.columns:
+                    # Calculate z-scores within age bins to isolate cognitive signal
+                    enhanced_data[f'{feature}_age_normalized'] = enhanced_data.groupby('age_bin')[feature].transform(
+                        lambda x: (x - x.mean()) / (x.std() + 1e-8)
+                    )
+        
+        # 3. Signal Detection Theory (SDT) features
+        if 'CorrectResponsesPCT' in data.columns and 'CorrectRejectionsPCT' in data.columns:
+            hit_rate = data['CorrectResponsesPCT'] / 100.0
+            fa_rate = 1.0 - (data['CorrectRejectionsPCT'] / 100.0)
+            
+            # Avoid extreme values for d' calculation
+            hit_rate = np.clip(hit_rate, 0.01, 0.99)
+            fa_rate = np.clip(fa_rate, 0.01, 0.99)
+            
+            # d' (d-prime) - sensitivity measure
+            enhanced_data['d_prime'] = (norm.ppf(hit_rate) - norm.ppf(fa_rate))
+            
+            # c (criterion) - bias measure
+            enhanced_data['criterion_c'] = -0.5 * (norm.ppf(hit_rate) + norm.ppf(fa_rate))
+        
+        # 4. Speed-Accuracy tradeoff features
+        if 'CorrectPCT' in data.columns and 'CorrectResponsesRT' in data.columns:
+            # Speed-accuracy product (higher is better)
+            enhanced_data['speed_accuracy_product'] = (data['CorrectPCT'] / 100.0) * (1.0 / (data['CorrectResponsesRT'] + 1e-8))
+            
+            # Speed-accuracy ratio
+            enhanced_data['speed_accuracy_ratio'] = data['CorrectPCT'] / (data['CorrectResponsesRT'] + 1e-8)
+        
+        # 5. Education-Accuracy interaction features
+        if 'Education' in data.columns and 'CorrectPCT' in data.columns:
+            enhanced_data['education_accuracy_interaction'] = data['Education'] * data['CorrectPCT']
+            enhanced_data['education_rt_interaction'] = data['Education'] * data.get('CorrectResponsesRT', 0)
+        
+        # 6. Device/Browser context features (if available)
+        device_cols = ['DeviceType', 'Browser', 'OperatingSystem', 'Language']
+        for col in device_cols:
+            if col in data.columns:
+                # One-hot encode device types
+                dummies = pd.get_dummies(data[col], prefix=col.lower())
+                enhanced_data = pd.concat([enhanced_data, dummies], axis=1)
+        
+        return enhanced_data
+    
+    def _detect_performance_plateau(self, model_results: Dict[str, float], 
+                                  feature_counts: List[int]) -> Dict[str, Any]:
+        """
+        Detect performance plateau patterns based on learnings from analysis sessions.
+        
+        Args:
+            model_results: Dictionary of model performance metrics
+            feature_counts: List of feature counts used in different experiments
+            
+        Returns:
+            Dictionary with plateau analysis and recommendations
+        """
+        plateau_analysis = {
+            'plateau_detected': False,
+            'plateau_confidence': 0.0,
+            'evidence': [],
+            'recommendations': []
+        }
+        
+        if len(model_results) < 3:
+            return plateau_analysis
+        
+        # Extract AUC values and sort by feature count
+        auc_values = []
+        feature_nums = []
+        
+        for name, auc in model_results.items():
+            # Extract feature count from model name if possible
+            if 'features' in name.lower():
+                try:
+                    feature_count = int(''.join(filter(str.isdigit, name.split('features')[0])))
+                    feature_nums.append(feature_count)
+                    auc_values.append(auc)
+                except:
+                    continue
+        
+        if len(auc_values) < 3:
+            return plateau_analysis
+        
+        # Sort by feature count
+        sorted_data = sorted(zip(feature_nums, auc_values))
+        feature_nums, auc_values = zip(*sorted_data)
+        
+        # Check for plateau pattern (AUC plateau around 0.755-0.760)
+        auc_range = max(auc_values) - min(auc_values)
+        mean_auc = np.mean(auc_values)
+        
+        plateau_indicators = 0
+        
+        # 1. Small performance range despite feature additions
+        if auc_range < 0.01:
+            plateau_indicators += 1
+            plateau_analysis['evidence'].append(
+                f"Performance range only {auc_range:.3f} AUC despite {len(feature_nums)} different feature sets"
+            )
+        
+        # 2. Performance around expected plateau (0.755-0.760)
+        if 0.750 <= mean_auc <= 0.765:
+            plateau_indicators += 1
+            plateau_analysis['evidence'].append(
+                f"Mean AUC {mean_auc:.3f} is in expected plateau range (0.755-0.760)"
+            )
+        
+        # 3. Diminishing returns from feature engineering
+        if len(auc_values) >= 4:
+            recent_improvement = auc_values[-1] - auc_values[-4]
+            if recent_improvement < 0.005:
+                plateau_indicators += 1
+                plateau_analysis['evidence'].append(
+                    f"Recent feature additions show minimal improvement: {recent_improvement:.3f} AUC"
+                )
+        
+        # Determine plateau confidence
+        plateau_analysis['plateau_confidence'] = plateau_indicators / 3.0
+        plateau_analysis['plateau_detected'] = plateau_analysis['plateau_confidence'] >= 0.67
+        
+        if plateau_analysis['plateau_detected']:
+            plateau_analysis['recommendations'].extend([
+                "Focus on data quality improvements rather than feature engineering",
+                "Implement baseline-only subject selection to reduce label noise",
+                "Explore within-test dynamics and per-item trajectory features",
+                "Consider cross-session stability analysis",
+                "Validate label quality and outcome definitions",
+                "Try different model architectures or ensemble methods"
+            ])
+        
+        return plateau_analysis
+    
+    def _generate_improvement_recommendations(self, data: pd.DataFrame, 
+                                            model_results: Dict[str, float]) -> Dict[str, Any]:
+        """
+        Generate comprehensive improvement recommendations based on learnings from analysis sessions.
+        
+        Args:
+            data: Input DataFrame
+            model_results: Dictionary of model performance metrics
+            
+        Returns:
+            Dictionary with improvement recommendations organized by category
+        """
+        recommendations = {
+            'data_quality_improvements': [],
+            'feature_engineering_improvements': [],
+            'model_improvements': [],
+            'technical_improvements': [],
+            'next_steps': []
+        }
+        
+        # 1. Data Quality Improvements
+        recommendations['data_quality_improvements'] = [
+            "Implement baseline-only subject selection to reduce label noise",
+            "Validate gender coding against data dictionary (0=Male, 1=Female)",
+            "Apply proper age calculation: Age_Baseline + TimepointCode (months)",
+            "Enforce MemTrax Ashford filter: Status == 'Collected', CorrectPCT >= 0.60, RT in [0.5, 2.5]",
+            "Cross-validate labels across multiple sources (self-report, informant, objective)",
+            "Check for selection bias in highly educated populations (70%+ college degrees)",
+            "Validate against expected MCI prevalence by age group"
+        ]
+        
+        # 2. Feature Engineering Improvements
+        recommendations['feature_engineering_improvements'] = [
+            "Use hit-only RTs (CorrectResponsesRT) for sequence features, not all clicks",
+            "Implement age-bin normalized z-scores to isolate cognitive signal",
+            "Add Signal Detection Theory features: d_prime, criterion_c",
+            "Create speed-accuracy tradeoff features: product, ratio",
+            "Add education-accuracy interaction features",
+            "Explore within-test dynamics: per-item response patterns, early vs late performance",
+            "Implement cross-session stability analysis",
+            "Add device/browser context features (one-hot encoded)",
+            "Create composite cognitive scores: RT/(accuracy+0.01)"
+        ]
+        
+        # 3. Model Improvements
+        recommendations['model_improvements'] = [
+            "Try traditional ML (Logistic Regression, Random Forest) before neural networks",
+            "Implement proper hyperparameter optimization",
+            "Use ensemble methods with different algorithms",
+            "Apply threshold optimization for imbalanced datasets",
+            "Consider model calibration for probability outputs",
+            "Test different train/test split ratios (70/30, 80/20)",
+            "Use stratified sampling to maintain class distribution"
+        ]
+        
+        # 4. Technical Improvements
+        recommendations['technical_improvements'] = [
+            "Load authoritative data dictionary for field definitions",
+            "Implement proper environment management for package installation",
+            "Optimize permutation importance calculation (major bottleneck)",
+            "Add comprehensive logging for debugging",
+            "Implement data validation at each processing step",
+            "Create automated data quality reports",
+            "Add performance monitoring and alerting"
+        ]
+        
+        # 5. Next Steps (based on current performance)
+        if model_results:
+            best_auc = max(model_results.values())
+            
+            if best_auc < 0.70:
+                recommendations['next_steps'].extend([
+                    "Focus on data quality - current performance suggests fundamental issues",
+                    "Verify data preprocessing and feature engineering",
+                    "Check for data leakage or methodological issues",
+                    "Consider simpler baseline models first"
+                ])
+            elif 0.70 <= best_auc <= 0.80:
+                recommendations['next_steps'].extend([
+                    "Performance is in expected range for cognitive assessment data",
+                    "Focus on threshold optimization for clinical utility",
+                    "Consider data quality improvements over model complexity",
+                    "Validate findings with external datasets"
+                ])
+            elif best_auc > 0.80:
+                recommendations['next_steps'].extend([
+                    "High performance detected - verify no data leakage",
+                    "Check for unrealistic performance indicators",
+                    "Validate against clinical expectations",
+                    "Consider if performance is too good to be true"
+                ])
+        
+        # Add specific recommendations based on data characteristics
+        if 'MemTrax' in str(data.columns):
+            recommendations['next_steps'].extend([
+                "Leverage rich per-item MemTrax data (50 items per test)",
+                "Explore temporal dynamics within 90-120 second tests",
+                "Analyze response patterns and fatigue effects",
+                "Consider multiple timepoint aggregation strategies"
+            ])
+        
+        return recommendations
+    
     def _check_performance_ceiling(self, model_results: Dict[str, float], 
                                   n_samples: int, n_features: int) -> Dict[str, Any]:
         """
@@ -296,6 +642,13 @@ class CognitiveAnalysisAgent:
             ceiling_analysis['evidence'].append(
                 f"Dataset too small for neural networks ({n_samples:,} samples, {n_features} features)"
             )
+        
+        # Check for plateau pattern (AUC plateau around 0.755-0.760)
+        plateau_analysis = self._detect_performance_plateau(model_results, [n_features])
+        if plateau_analysis['plateau_detected']:
+            ceiling_indicators += 1
+            ceiling_analysis['evidence'].extend(plateau_analysis['evidence'])
+            ceiling_analysis['recommendations'].extend(plateau_analysis['recommendations'])
         
         # Determine if at ceiling
         if ceiling_indicators >= 2:
@@ -509,11 +862,25 @@ class CognitiveAnalysisAgent:
             # Step 7: Statistical summary
             analysis_results['statistical_summary'] = self._generate_statistical_summary(analysis_results)
             
-            # Step 8: Create visualizations
-            self.logger.info("Step 8: Creating visualizations")
+            # Step 8: Generate improvement recommendations
+            self.logger.info("Step 8: Generating improvement recommendations")
+            model_results = {}
+            if 'assessment_analysis' in analysis_results:
+                for assessment_type, results in analysis_results['assessment_analysis'].items():
+                    if 'model_performance' in results:
+                        for model_name, metrics in results['model_performance'].items():
+                            if 'auc' in metrics:
+                                model_results[f"{assessment_type}_{model_name}"] = metrics['auc']
+            
+            analysis_results['improvement_recommendations'] = self._generate_improvement_recommendations(
+                self.combined_data, model_results
+            )
+            
+            # Step 9: Create visualizations
+            self.logger.info("Step 9: Creating visualizations")
             self._create_analysis_visualizations(analysis_results)
             
-            # Step 9: Save results
+            # Step 10: Save results
             analysis_results['analysis_info']['end_time'] = datetime.now().isoformat()
             self._save_analysis_results(analysis_results)
             
@@ -532,7 +899,8 @@ class CognitiveAnalysisAgent:
             'assessments_loaded': [],
             'total_subjects': 0,
             'baseline_subjects': 0,
-            'preprocessing_steps': []
+            'preprocessing_steps': [],
+            'data_quality_validation': {}
         }
         
         # Try dataset adapter first
@@ -544,7 +912,20 @@ class CognitiveAnalysisAgent:
                     self.combined_data = adapter.load_combined()
                     summary = adapter.data_summary()
                     data_summary.update(summary)
-                    # Done
+                    
+                    # Apply enhanced data quality validation
+                    if self.combined_data is not None and len(self.combined_data) > 0:
+                        validation_results = self._validate_data_quality(self.combined_data)
+                        data_summary['data_quality_validation'] = validation_results
+                        
+                        # Log validation warnings
+                        for warning in validation_results.get('warnings', []):
+                            self.logger.warning(f"   ⚠️ {warning}")
+                        
+                        # Apply advanced feature engineering
+                        self.combined_data = self._engineer_advanced_features(self.combined_data)
+                        self.logger.info(f"   🔧 Applied advanced feature engineering: {self.combined_data.shape[1]} features")
+                    
                     return data_summary
                 else:
                     self.logger.info("   ℹ️ No suitable dataset adapter available; falling back to legacy loader")
@@ -606,6 +987,18 @@ class CognitiveAnalysisAgent:
                 "Applied gentle imputation for missing values",
                 f"Retained {len(self.combined_data)}/{initial_subjects} subjects"
             ]
+            
+            # Apply enhanced data quality validation
+            validation_results = self._validate_data_quality(self.combined_data)
+            data_summary['data_quality_validation'] = validation_results
+            
+            # Log validation warnings
+            for warning in validation_results.get('warnings', []):
+                self.logger.warning(f"   ⚠️ {warning}")
+            
+            # Apply advanced feature engineering
+            self.combined_data = self._engineer_advanced_features(self.combined_data)
+            self.logger.info(f"   🔧 Applied advanced feature engineering: {self.combined_data.shape[1]} features")
             
             self.logger.info(f"   ✅ BENCHMARK DATA LOADING: {len(self.combined_data)} subjects ready for analysis")
             
